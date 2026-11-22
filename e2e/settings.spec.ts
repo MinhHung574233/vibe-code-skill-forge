@@ -27,7 +27,7 @@ test('settings show offline readiness, and Repair restores deleted precache file
   await launchApp(page);
   await openSettings(page);
 
-  await expect(page.getByText('Ready offline')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Ready offline', { exact: true })).toBeVisible({ timeout: 15_000 });
 
   // Simulate iOS evicting Cache Storage while IndexedDB survives.
   await page.evaluate(async () => {
@@ -35,11 +35,11 @@ test('settings show offline readiness, and Repair restores deleted precache file
   });
 
   await page.getByRole('button', { name: 'Check again' }).click();
-  await expect(page.getByText('Incomplete')).toBeVisible();
+  await expect(page.getByText('Incomplete', { exact: true })).toBeVisible();
   await expect(page.locator('[data-banner="offline"]')).toBeVisible();
 
   await page.getByRole('button', { name: 'Repair' }).first().click();
-  await expect(page.getByText('Ready offline')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Ready offline', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('[data-banner="offline"]')).toHaveCount(0);
 });
 
@@ -90,7 +90,7 @@ test('backup export, tamper rejection, and restore round-trip through Settings',
     .getByRole('button', { name: 'Replace' })
     .click();
 
-  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible({
     timeout: 15_000,
   });
   expect(await skillNames(page)).toEqual(['Chess', 'Rubik']);
@@ -118,7 +118,7 @@ test('restoring from the recovery screen after storage was wiped', async ({ page
     .getByRole('button', { name: 'Replace' })
     .click();
 
-  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible({
     timeout: 15_000,
   });
   expect(await skillNames(page)).toEqual(['Chess', 'Go', 'Rubik']);
@@ -151,7 +151,7 @@ test('erase all data wipes everything and the app starts clean (no false loss al
     .getByRole('button', { name: 'Erase everything' })
     .click();
 
-  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByRole('heading', { name: 'Your data appears to be missing' })).toHaveCount(
