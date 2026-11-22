@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover lets us handle iPhone safe areas with env(safe-area-inset-*) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>SkillForge</title>
+    <meta name="description" content="Personal growth and training hub. Works fully offline." />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Apply a saved manual theme before first paint (no light/dark flash). -->
+    <script>
+      try {
+        var t = localStorage.getItem('sf-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    </script>
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F3F7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0D12" />
+    <!-- iOS standalone (Add to Home Screen). Status-bar style is verified on device; see docs/IOS_PWA.md -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="SkillForge" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
+    <!-- Icons, manifest link and apple-touch-startup-image links are injected at build by vite-plugin-pwa (pwaAssets). -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

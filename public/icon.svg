@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#4F46E5"/>
+  <!-- four-point spark: "forge" + "sharpen" -->
+  <path fill="#FFFFFF" d="M256 96c10 78 38 106 116 116-78 10-106 38-116 116-10-78-38-106-116-116 78-10 106-38 116-116z"/>
+  <path fill="#FFFFFF" fill-opacity=".55" d="M376 300c5 36 18 49 54 54-36 5-49 18-54 54-5-36-18-49-54-54 36-5 49-18 54-54z"/>
+</svg>

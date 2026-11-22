@@ -1,0 +1,111 @@
+# SkillForge – Roadmap & Project Status (PWA edition, v2)
+
+A milestone closes only when `npm run verify` is green, the production build succeeds, and the app has been checked on the target (Playwright-WebKit for automation; real iPhone for iOS-specific behaviour per IOS_PWA.md §8).
+
+## 0. Status board
+
+| Item | State |
+|---|---|
+| Phase 0 – environment check | ✅ 2026-11-22 |
+| Phase 0 – docs rewritten for PWA (PRD, ARCHITECTURE, DATABASE, DESIGN_SYSTEM, TECHNICAL_DECISIONS, ROADMAP + IOS_PWA, DEPLOYMENT) | ✅ drafted 2026-11-22 |
+| Node 22 | ✅ 22.23.5 active |
+| Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ (2026-11-22) · M1.4 next |
+| M1.3 – database foundation | ✅ 138 unit/integration tests, 12 e2e tests green; see DATABASE.md §7 |
+| M1.2 – design system | ✅ 86 unit tests, 9 e2e tests green; light/dark screenshots reviewed; see DESIGN_SYSTEM §13 |
+| M1.1 – scaffold | ✅ verify green (tsc, eslint, 28 unit tests), build green, 2 Edge e2e tests green (offline precache + reload, manifest/icon) |
+
+### Completed
+- Environment verified; Node upgraded to 22.23.5 (junction repair noted in TECHNICAL_DECISIONS §1).
+- Platform decision D-0 (React Native → PWA) and full documentation set.
+- Package versions and peer ranges verified against npm.
+
+### Pending
+- M1.1 scaffold → M1.5 (below).
+- Choose free host and final URL (before daily use).
+- First real-iPhone check (after first deploy).
+
+### Known issues / risks (live)
+1. iOS storage persistence is not guaranteed; durability plan in D-7 must be validated on the device (R1).
+2. Real-iPhone verification requires a deployed HTTPS URL (not available until a host is chosen).
+3. `typescript-eslint` doesn't support TypeScript 7 yet → TS pinned to 6.0.x.
+4. Git on this machine is 2.33 (works); no repo yet.
+5. Status-bar/splash behaviour on the owner's iOS version unverified (R5).
+
+### Test results log
+| Date | Scope | Result |
+|---|---|---|
+| 2026-11-22 | M1.1 `npm run verify` | ✅ tsc strict clean · eslint clean (layer rule proven to fire on a deliberate violation) · vitest 5 files / 28 tests pass |
+| 2026-11-22 | M1.1 `npm run build` | ✅ 64 precache entries (572 KiB); main JS 321 kB (102 kB gzip) – within the 250 kB-gzip budget |
+| 2026-11-22 | M1.1 e2e (Playwright, installed Edge/Chromium, 390×844 touch) | ✅ 2/2: precache populated → offline cold reload renders → offline tab navigation works; manifest `standalone` + 192/512 icons + apple-touch-icon PNG served |
+| 2026-11-22 | M1.2 `npm run verify` | ✅ tsc · eslint · vitest 8 files / 86 tests (components, theme store, WCAG contrast over parsed tokens) |
+| 2026-11-22 | M1.2 e2e (Edge, 390×844 touch) | ✅ 9/9: light+dark render with no horizontal overflow; all controls ≥44px; theme override persists across reload; sheet closes via Escape, scrim tap and drag; large title collapses; gallery works offline (lazy chunk precached) |
+| 2026-11-22 | M1.3 `npm run verify` | ✅ tsc · eslint · vitest 14 files / 138 tests: schema, boot, snapshot/upgrade/restore, failed migration, newer-schema refusal, data-loss detector, multi-instance versionchange, settings repo, storage health, error mapping, BootGate/recovery UI |
+| 2026-11-22 | M1.3 e2e (Edge) | ✅ 12/12 total (3 new): v1 DB created with the 4 stores and persists across reload; wiped storage → live app asks to reload, relaunch shows recovery (not an empty app), "Continue with empty data" works; DB at a newer schema → refused and left at version 990 |
+| 2026-11-22 | Real iPhone | ⬜ not yet (needs a deployed HTTPS URL; M1.5) |
+| 2026-11-22 | Playwright WebKit | ⬜ not installed (needs `npx playwright install webkit`, a browser download; opt-in with `E2E_WEBKIT=1`) |
+
+**Bug found and fixed by the offline e2e test (M1.1):** the first build activated its service worker but cached nothing, so the app would have failed offline. Cause: `manifest.webmanifest` was listed twice in the Workbox precache (my glob plus the PWA plugin's own entry) with different revisions → `add-to-cache-list-conflicting-entries`, which Workbox throws *after* registration succeeds, so the failure is silent. Fix: drop `webmanifest` from `globPatterns`; inline the Workbox runtime (`inlineWorkboxRuntime`) so errors surface at install instead of inside the AMD loader. Guard: the offline e2e test must stay in `verify:full`.
+
+### Next steps
+1. M1.4 settings UI (theme, goals), update banner, offline-readiness check + Repair, install coach sheet, backup export/import v1 (also adds Import backup to the recovery screen).
+2. Decide host (DEPLOYMENT.md) so the first real-iPhone check can happen at M1.5.
+
+### Known gaps in M1.3 (intentional)
+- No `drafts` repository yet (store exists; built with the Rubik timer, M3.1).
+- `MARKER_TABLES` covers only `skills`/`skillGoals`; each milestone that adds a user-data store must add it (a test fails if a store is left unclassified).
+- Recovery screen has no "Import backup" yet (arrives with backup in M1.4). Until then the only protection is the pre-update snapshot.
+- Storage-health store exists but no UI shows it until the Settings screen (M1.4).
+
+### Known gaps in M1.1 (intentional)
+- Screens are labelled "Foundation shell" placeholders; none claims to be a feature.
+- No update banner yet (`pwaStore` flags exist; UI lands in M1.4) – harmless until the first deployment.
+- Tab icons are temporary inline SVGs.
+- Landscape/iPad splash images are generated but unused (portrait-first); trim at M5 if size matters.
+- `npm audit`/deprecation: a transitive `glob@11.1.0` deprecation warning comes from the Workbox toolchain (build-time only, not shipped).
+
+---
+
+## Phase 1 – Foundation
+
+| ID | Deliverable | Done when |
+|---|---|---|
+| **M1.1** | Vite 8 + React 19 + TS strict + Tailwind 4 + React Router (hash) + Zustand + Dexie + vite-plugin-pwa; ESLint (layer rules), Prettier, Vitest; manifest + placeholder icon; `verify`, `build`, `preview` scripts; git init | `npm run verify` and `npm run build` green; shell renders; SW generated |
+| M1.2 | Design system: tokens (light/dark), primitives, tab bar, safe areas, sheet, large-title header, icons, `/dev/components` gallery route | Gallery renders in both themes at iPhone viewport (Playwright screenshot) |
+| M1.3 | Dexie schema v1, repositories base, `Clock`/`ids`, boot gate, error/recovery screen, snapshot + loss marker, `storage.persist()` status | Upgrade tests green; reload persistence test green |
+| M1.4 | Settings (theme, persisted), PWA layer: update prompt, offline readiness, install coach sheet, backup export/import v1 | Offline reload e2e green; backup round-trip test green |
+| M1.5 | Dashboard skeleton + final 5-tab navigation + empty states; deployable `dist`; `DEPLOYMENT.md` dry-run on a free host; **first real-iPhone checklist** | Checklist items 1–7 recorded |
+
+## Phase 2 – Core training platform
+
+| ID | Deliverable |
+|---|---|
+| M2.1 | Dexie v2 stores; `TrainingEngine` transactional finish + idempotent XP; XP rules + level curve (unit + integration tests) |
+| M2.2 | Streak, daily goals, `dailySummary` maintenance |
+| M2.3 | Achievements (6 initial) from persisted facts |
+| M2.4 | Skills CRUD, goals UI, seeded default skills |
+| M2.5 | Analytics + Progress screens (day/week/month, distribution, consistency, history, in-house charts) |
+| M2.6 | Dashboard on real data; recommender v1; SessionComplete sheet |
+
+## Phase 3 – Modules (each independently tested before the next)
+
+| ID | Module | Scope |
+|---|---|---|
+| M3.1 | Rubik | timer state machine on pointer events, scramble, Ao5/Ao12, history, charts, algorithm library, notes, goals; device timer calibration |
+| M3.2 | English | content schema, ≥300 IT words, SM-2, flashcards, quiz, favourites, collections, custom words, speech playback, daily goal, stats |
+| M3.3 | Java & Spring | content schema, 5 tracks, topic viewer with code blocks, quiz, challenges, bookmarks, notes, completion, path achievement |
+| M3.4 | Developer Tools | tip schema, 3 categories, Daily Developer Tip, bookmarks |
+| M3.5 | Caro | rules, SVG board, worker AI (4 levels), local 2P, undo, puzzles, stats |
+| M3.6 | Chess | chess.js, SVG board, promotion, endings, puzzles, openings, rating |
+| M3.7 | Go | rules engine, 9/13/19 SVG board, scoring, tsumego, stats |
+
+## Phase 4 – Quality & polish
+UI refinement, animation polish, empty/error audit, performance (startup, lists, worker AI), accessibility (VoiceOver, text zoom), persistence & offline test pass (incl. 8-day idle test), coverage targets, e2e suite.
+
+## Phase 5 – Deployment & release readiness (replaces App Store prep)
+Final icon + splash set, manifest polish, free-host deployment (Cloudflare Pages/GitHub Pages/Netlify), `_headers`/cache policy, optional GitHub Actions deploy, backup/restore drill, final device checklist. No App Store, TestFlight or Apple Developer account involved.
+
+## Definition of done (every milestone)
+- `tsc` strict, ESLint, Vitest all green; no skipped failures; build succeeds and budgets hold.
+- Verified in Playwright-WebKit; iOS-specific items verified on device where applicable and logged.
+- Docs updated for any architecture/schema change; status board updated.
+- App remains runnable; no half-wired screens reachable from navigation.
