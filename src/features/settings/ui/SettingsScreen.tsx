@@ -3,6 +3,7 @@ import { Badge, type BadgeTone } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Screen } from '@/components/Screen';
+import { NumberStepper } from '@/components/NumberStepper';
 import { ListRow, Section } from '@/components/Section';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { CURRENT_SCHEMA_VERSION } from '@/db/schema';
@@ -60,6 +61,7 @@ export function SettingsScreen() {
 
   const settings = useSettingsRepository();
   const lastBackupAt = useSetting('lastBackupAt');
+  const dailyGoal = useSetting('dailyGoalMinutes');
   const now = useNow();
 
   const [exportOpen, setExportOpen] = useState(false);
@@ -94,6 +96,31 @@ export function SettingsScreen() {
             onChange={setPreference}
           />
         </div>
+      </Section>
+
+      <Section
+        title="Training"
+        footer="Your goal appears on the Home screen. It starts counting once training sessions are recorded."
+      >
+        <ListRow
+          title="Daily goal"
+          subtitle="Minutes per day"
+          icon="target"
+          iconColor="var(--accent)"
+          accessory={
+            dailyGoal === undefined ? undefined : (
+              <NumberStepper
+                label="daily goal"
+                value={dailyGoal}
+                min={5}
+                max={240}
+                step={5}
+                format={(v) => `${v} min`}
+                onChange={(v) => void settings.set('dailyGoalMinutes', v)}
+              />
+            )
+          }
+        />
       </Section>
 
       <Section

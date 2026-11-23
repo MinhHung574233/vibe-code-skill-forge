@@ -1,5 +1,7 @@
 import type { RouteObject } from 'react-router';
 import { ShellScreen } from '@/components/ShellScreen';
+import { DashboardScreen } from '@/features/dashboard/ui/DashboardScreen';
+import { PracticeScreen } from '@/features/practice/ui/PracticeScreen';
 import { SettingsScreen } from '@/features/settings/ui/SettingsScreen';
 import { TabLayout } from './TabLayout';
 
@@ -11,9 +13,9 @@ export const routes: RouteObject[] = [
   {
     element: <TabLayout />,
     children: [
-      { index: true, element: <ShellScreen title="Home" milestone="M1.5 (dashboard skeleton)" /> },
+      { index: true, element: <DashboardScreen /> },
       { path: 'skills', element: <ShellScreen title="Skills" milestone="M2.4" /> },
-      { path: 'practice', element: <ShellScreen title="Practice" milestone="M3.1+ (modules)" /> },
+      { path: 'practice', element: <PracticeScreen /> },
       { path: 'progress', element: <ShellScreen title="Progress" milestone="M2.5" /> },
       { path: 'settings', element: <SettingsScreen /> },
       {

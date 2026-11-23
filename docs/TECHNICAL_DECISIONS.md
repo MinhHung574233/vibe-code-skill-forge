@@ -57,6 +57,8 @@ Chosen conservatively where "latest" has an ecosystem gap (TypeScript). No exper
 
 **D-27 Restore = Replace, validated before touching data, rolled back on failure.** Parse → envelope → schema version → table names → every row → SHA-256 checksum; then snapshot current data (only if it holds user data, so an empty database never overwrites a useful snapshot), delete, recreate at the backup's own schema version, `bulkAdd`, and restore the snapshot on any error.
 
+**D-28 Production headers via `public/_headers` (Cloudflare/Netlify format), tested locally and live.** CSP `default-src 'self'` with no remote origin, no inline script, no eval; `style-src` keeps 'unsafe-inline' only because React sets style attributes. Hashed `/assets/*` are immutable for a year; `sw.js`, `index.html` and the manifest are `no-cache`. `vite preview` applies the same file through a small plugin (`tools/headersFile.ts`), so the e2e suite exercises the real policy, and the same e2e files run against the deployed site with `E2E_BASE_URL`. The inline theme script moved to `public/theme-init.js`. The CSP e2e found that Zod 4 probes `Function('')`, reported as a violation although caught, so Zod runs with `jitless: true` (`src/app/zodSetup.ts`).
+
 **D-5 Content bundled into lazy chunks, precached.** "Content download" = the install precache; no runtime fetch of content. Validated by Zod in tests. Budget: precache ≤ 15 MB, initial JS ≤ 250 kB gzip.
 
 **D-6 Offline-readiness verification.** Build emits `offline-manifest.json`; the client checks every URL in `caches` and exposes Repair. iOS can evict caches independently of IndexedDB.

@@ -9,7 +9,8 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | Phase 0 – environment check | ✅ 2026-11-22 |
 | Phase 0 – docs rewritten for PWA (PRD, ARCHITECTURE, DATABASE, DESIGN_SYSTEM, TECHNICAL_DECISIONS, ROADMAP + IOS_PWA, DEPLOYMENT) | ✅ drafted 2026-11-22 |
 | Node 22 | ✅ 22.23.5 active |
-| Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ · M1.4 ✅ (2026-11-22) · M1.5 next |
+| Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ · M1.4 ✅ · M1.5 ✅ (2026-11-23) · **Phase 1 complete** · M2.1 next |
+| M1.5 – home, practice hub, headers | ✅ 221 unit tests, 26 e2e tests; CSP + cache headers verified locally and on the live Cloudflare site; see below |
 | M1.4 – settings, PWA layer, backup | ✅ 198 unit/integration tests, 17 e2e tests (stable over 3 parallel runs); see below |
 | M1.3 – database foundation | ✅ 138 unit/integration tests, 12 e2e tests green; see DATABASE.md §7 |
 | M1.2 – design system | ✅ 86 unit tests, 9 e2e tests green; light/dark screenshots reviewed; see DESIGN_SYSTEM §13 |
@@ -44,6 +45,8 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | 2026-11-22 | M1.3 e2e (Edge) | ✅ 12/12 total (3 new): v1 DB created with the 4 stores and persists across reload; wiped storage → live app asks to reload, relaunch shows recovery (not an empty app), "Continue with empty data" works; DB at a newer schema → refused and left at version 990 |
 | 2026-11-22 | M1.4 `npm run verify` | ✅ tsc · eslint · vitest 21 files / 198 tests: backup build/parse/import (checksum, tamper, truncation, newer schema, unknown table, invalid row, older-schema import + forward migration, rollback on failed import, snapshot rules), backup nudge, file delivery (share/cancel/download/copy), readiness classification, install detection, status banners and their priority, format helpers |
 | 2026-11-22 | M1.4 e2e (Edge, 390×844 touch) | ✅ 17/17 ×3 runs (5 new): Settings shows Ready offline; evicted Cache Storage → Incomplete + banner → Repair → Ready; export → real downloaded file has correct envelope/checksum/2 skills/no drafts; tampered file rejected; diverge → restore → data back; wiped storage → recovery screen → restore from file; non-backup file refused; erase all → clean start with no false loss alert |
+| 2026-11-23 | M1.5 `npm run verify` | ✅ tsc · eslint · vitest 26 files / 221 tests (including tools/): module registry, NumberStepper, Home (live goal, honest empty states, skill count ignoring deleted), Practice hub, daily-goal persistence, `_headers` parser and real-file policy checks, Zod jitless |
+| 2026-11-23 | M1.5 e2e (Edge, production headers applied) | ✅ new: security/cache headers; app tour under the CSP with **zero violations and zero console errors**; no inline scripts; Home goal + empty states; Practice lists 7 modules (Coming soon); daily goal persists and shows on Home; every control ≥44px on Home/Practice/Settings; light+dark no overflow (screenshots reviewed) |
 | 2026-11-22 | Real iPhone | ⬜ not yet (needs a deployed HTTPS URL; M1.5) |
 | 2026-11-22 | Playwright WebKit | ⬜ not installed (needs `npx playwright install webkit`, a browser download; opt-in with `E2E_WEBKIT=1`) |
 
@@ -52,6 +55,11 @@ A milestone closes only when `npm run verify` is green, the production build suc
 ### Next steps
 1. M1.5 Dashboard skeleton + final navigation + empty states; deployable `dist`; dry-run on a free host; **first real-iPhone checklist**.
 2. Decide host (DEPLOYMENT.md) so the first real-iPhone check can happen at M1.5.
+
+### Known gaps in M1.5 (intentional)
+- Home shows only what exists: today's goal ring is 0 by construction (`useDashboardData.todayMinutes` is the single seam the training engine fills in M2.2), no streak/XP/level, empty "Next up", "Your skills" and "Recent activity".
+- Practice rows are not tappable and say "Coming soon"; Skills and Progress tabs are still labelled foundation shells.
+- CRLF: Windows checks files out as CRLF while git stores LF; harmless for the build but noisy in diffs (a `.gitattributes` with `* text=auto eol=lf` would silence it).
 
 ### Known gaps in M1.4 (intentional)
 - Backups are **Replace-only** (no merge) and **unencrypted**; both stated in the UI.
@@ -84,7 +92,7 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | M1.4 | Settings (theme, persisted), PWA layer: update prompt, offline readiness, install coach sheet, backup export/import v1 | Offline reload e2e green; backup round-trip test green |
 | M1.5 | Dashboard skeleton + final 5-tab navigation + empty states; deployable `dist`; `DEPLOYMENT.md` dry-run on a free host; **first real-iPhone checklist** | Checklist items 1–7 recorded |
 
-## Phase 2 – Core training platform
+## Next: Phase 2 – Core training platform
 
 | ID | Deliverable |
 |---|---|

@@ -33,7 +33,7 @@ HTTPS is mandatory (service workers and installability require it; `localhost` i
 ### Option C – Netlify Drop
 1. Open `app.netlify.com/drop`, sign in (free), drag `dist` onto the page. URL: `https://<random>.netlify.app` (rename in site settings).
 
-All three serve `sw.js` and `manifest.webmanifest` correctly with no extra configuration. `public/_headers` (added at M5) sets `Cache-Control: no-cache` for `sw.js`, `index.html`, `manifest.webmanifest` so updates are picked up promptly and long-cache for hashed assets.
+All three serve `sw.js` and `manifest.webmanifest` correctly with no extra configuration. `public/_headers` is copied into `dist/` and applied by Cloudflare (Workers assets and Pages) and Netlify: it sets the Content-Security-Policy and security headers and the cache policy. GitHub Pages ignores `_headers` (the app still works; only the extra headers are missing). Because `sw.js`, `index.html` and the manifest are `no-cache` and hashed assets are immutable, updates are picked up promptly and everything else is cached long-term.
 
 ## 3. Open it in Safari on iPhone
 1. Use **Safari** (other iOS browsers cannot install PWAs to the Home Screen on all versions; Safari is the supported path).

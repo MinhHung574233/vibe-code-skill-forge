@@ -9,6 +9,7 @@ const PATHS = {
   chevronRight: 'M9 5l7 7-7 7',
   chevronLeft: 'M15 5l-7 7 7 7',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
   x: 'M6 6l12 12M18 6L6 18',
   flame: 'M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .5 1.5 1.5 2 2 2 0-3-1-5 1-8z',
   bolt: 'M13 3L5 13.5h6L10 21l8-10.5h-6z',
@@ -28,6 +29,9 @@ const PATHS = {
   target:
     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 12.1v-.2',
   refresh: 'M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4',
+  chess: 'M12 4.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM9.8 12h4.4l1.3 5.5h-7zM7 20h10',
+  stones:
+    'M8.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM16 19a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM14 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

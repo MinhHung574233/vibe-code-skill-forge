@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Dexie from 'dexie';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -22,6 +22,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  cleanup(); // unmount first: live queries must not run against a closed database
   closeActiveDb();
   await Dexie.delete(DB);
   await Dexie.delete(`${DB}-snap`);
