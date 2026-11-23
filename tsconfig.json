@@ -15,10 +15,10 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "types": ["vite/client", "vite-plugin-pwa/client"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "e2e", "vite.config.ts", "pwa-assets.config.ts", "playwright.config.ts"]
+  "include": ["src", "e2e", "tools", "vite.config.ts", "pwa-assets.config.ts", "playwright.config.ts"]
 }

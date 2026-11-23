@@ -7,13 +7,9 @@
     <title>SkillForge</title>
     <meta name="description" content="Personal growth and training hub. Works fully offline." />
     <meta name="color-scheme" content="light dark" />
-    <!-- Apply a saved manual theme before first paint (no light/dark flash). -->
-    <script>
-      try {
-        var t = localStorage.getItem('sf-theme');
-        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-      } catch (e) {}
-    </script>
+    <!-- Apply a saved manual theme before first paint (no light/dark flash). External, not
+         inline, so the Content-Security-Policy can forbid inline scripts. -->
+    <script src="/theme-init.js"></script>
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F3F7" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B0D12" />
     <!-- iOS standalone (Add to Home Screen). Status-bar style is verified on device; see docs/IOS_PWA.md -->

@@ -1,13 +1,36 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { headersForPath, parseHeadersFile } from './tools/headersFile.ts';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
   version: string;
 };
+
+/**
+ * `vite preview` ignores public/_headers (hosts like Cloudflare apply it). This plugin applies the
+ * same file so local runs and the e2e tests see the production headers, including the CSP.
+ */
+function applyHeadersFile(): Plugin {
+  return {
+    name: 'skillforge:headers-file',
+    configurePreviewServer(server) {
+      const rules = parseHeadersFile(
+        readFileSync(new URL('./public/_headers', import.meta.url), 'utf8'),
+      );
+      server.middlewares.use((req, res, next) => {
+        for (const [name, value] of Object.entries(headersForPath(rules, req.url ?? '/'))) {
+          res.setHeader(name, value);
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig({
   // Relative base so the same build works at a domain root or under a sub-path
@@ -16,6 +39,7 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: [
+    applyHeadersFile(),
     react(),
     tailwindcss(),
     VitePWA({
@@ -60,7 +84,7 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'tools/**/*.test.ts'],
     css: false,
   },
 });
