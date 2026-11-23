@@ -9,7 +9,8 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | Phase 0 – environment check | ✅ 2026-11-22 |
 | Phase 0 – docs rewritten for PWA (PRD, ARCHITECTURE, DATABASE, DESIGN_SYSTEM, TECHNICAL_DECISIONS, ROADMAP + IOS_PWA, DEPLOYMENT) | ✅ drafted 2026-11-22 |
 | Node 22 | ✅ 22.23.5 active |
-| Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ (2026-11-22) · M1.4 next |
+| Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ · M1.4 ✅ (2026-11-22) · M1.5 next |
+| M1.4 – settings, PWA layer, backup | ✅ 198 unit/integration tests, 17 e2e tests (stable over 3 parallel runs); see below |
 | M1.3 – database foundation | ✅ 138 unit/integration tests, 12 e2e tests green; see DATABASE.md §7 |
 | M1.2 – design system | ✅ 86 unit tests, 9 e2e tests green; light/dark screenshots reviewed; see DESIGN_SYSTEM §13 |
 | M1.1 – scaffold | ✅ verify green (tsc, eslint, 28 unit tests), build green, 2 Edge e2e tests green (offline precache + reload, manifest/icon) |
@@ -41,20 +42,28 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | 2026-11-22 | M1.2 e2e (Edge, 390×844 touch) | ✅ 9/9: light+dark render with no horizontal overflow; all controls ≥44px; theme override persists across reload; sheet closes via Escape, scrim tap and drag; large title collapses; gallery works offline (lazy chunk precached) |
 | 2026-11-22 | M1.3 `npm run verify` | ✅ tsc · eslint · vitest 14 files / 138 tests: schema, boot, snapshot/upgrade/restore, failed migration, newer-schema refusal, data-loss detector, multi-instance versionchange, settings repo, storage health, error mapping, BootGate/recovery UI |
 | 2026-11-22 | M1.3 e2e (Edge) | ✅ 12/12 total (3 new): v1 DB created with the 4 stores and persists across reload; wiped storage → live app asks to reload, relaunch shows recovery (not an empty app), "Continue with empty data" works; DB at a newer schema → refused and left at version 990 |
+| 2026-11-22 | M1.4 `npm run verify` | ✅ tsc · eslint · vitest 21 files / 198 tests: backup build/parse/import (checksum, tamper, truncation, newer schema, unknown table, invalid row, older-schema import + forward migration, rollback on failed import, snapshot rules), backup nudge, file delivery (share/cancel/download/copy), readiness classification, install detection, status banners and their priority, format helpers |
+| 2026-11-22 | M1.4 e2e (Edge, 390×844 touch) | ✅ 17/17 ×3 runs (5 new): Settings shows Ready offline; evicted Cache Storage → Incomplete + banner → Repair → Ready; export → real downloaded file has correct envelope/checksum/2 skills/no drafts; tampered file rejected; diverge → restore → data back; wiped storage → recovery screen → restore from file; non-backup file refused; erase all → clean start with no false loss alert |
 | 2026-11-22 | Real iPhone | ⬜ not yet (needs a deployed HTTPS URL; M1.5) |
 | 2026-11-22 | Playwright WebKit | ⬜ not installed (needs `npx playwright install webkit`, a browser download; opt-in with `E2E_WEBKIT=1`) |
 
 **Bug found and fixed by the offline e2e test (M1.1):** the first build activated its service worker but cached nothing, so the app would have failed offline. Cause: `manifest.webmanifest` was listed twice in the Workbox precache (my glob plus the PWA plugin's own entry) with different revisions → `add-to-cache-list-conflicting-entries`, which Workbox throws *after* registration succeeds, so the failure is silent. Fix: drop `webmanifest` from `globPatterns`; inline the Workbox runtime (`inlineWorkboxRuntime`) so errors surface at install instead of inside the AMD loader. Guard: the offline e2e test must stay in `verify:full`.
 
 ### Next steps
-1. M1.4 settings UI (theme, goals), update banner, offline-readiness check + Repair, install coach sheet, backup export/import v1 (also adds Import backup to the recovery screen).
+1. M1.5 Dashboard skeleton + final navigation + empty states; deployable `dist`; dry-run on a free host; **first real-iPhone checklist**.
 2. Decide host (DEPLOYMENT.md) so the first real-iPhone check can happen at M1.5.
+
+### Known gaps in M1.4 (intentional)
+- Backups are **Replace-only** (no merge) and **unencrypted**; both stated in the UI.
+- `navigator.share` file sharing, the `<a download>` path and the Add-to-Home-Screen steps are unit-tested with mocks and the download path is e2e-tested in Edge, but **none of it is verified on an iPhone yet** (IOS_PWA §8 items 1, 7).
+- The update banner and Restart flow are unit-tested only; a real two-version deploy test happens at M1.5 on the host.
+- Row validation in backups is minimal (keys + indexed fields). Each new store must add a schema to `ROW_SCHEMAS`; a test fails if one is missing. Stores whose shape changes in a later version need version-specific schemas.
+- Daily goal / streak-rule settings exist as keys but have no UI until the training engine (M2.2) uses them.
+- Settings → Offline relies on the custom service worker; in the dev server it correctly reports "Not available here".
 
 ### Known gaps in M1.3 (intentional)
 - No `drafts` repository yet (store exists; built with the Rubik timer, M3.1).
 - `MARKER_TABLES` covers only `skills`/`skillGoals`; each milestone that adds a user-data store must add it (a test fails if a store is left unclassified).
-- Recovery screen has no "Import backup" yet (arrives with backup in M1.4). Until then the only protection is the pre-update snapshot.
-- Storage-health store exists but no UI shows it until the Settings screen (M1.4).
 
 ### Known gaps in M1.1 (intentional)
 - Screens are labelled "Foundation shell" placeholders; none claims to be a feature.

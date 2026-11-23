@@ -51,6 +51,12 @@ Chosen conservatively where "latest" has an ecosystem gap (TypeScript). No exper
 
 **D-4 Service worker via Workbox `generateSW`, `registerType: 'prompt'`.** Never auto-swap code under a running timer/game; explicit update banner; update checks on `visibilitychange`. Rejected: `autoUpdate` (data-loss risk for in-progress sessions), hand-written SW (more bugs, no benefit).
 
+**D-25 Own service worker (`injectManifest`, `src/sw.ts`) instead of generated `generateSW`.** The page must be able to ask the worker which precached files are missing and re-download them (iOS can evict Cache Storage independently of IndexedDB), which `generateSW` cannot express. It still uses Workbox precaching/routing, never activates an update by itself (`SKIP_WAITING` only after the user taps Restart), and the `manifest.webmanifest` duplicate-entry trap is avoided by not globbing it. Found while building M1.4: Workbox only injects the manifest if the literal text `self.__WB_MANIFEST` survives in the source, so `self` must not be aliased there.
+
+**D-26 Backup delivery is two-step on iOS.** The file is built when the export sheet opens so the Share button calls `navigator.share()` directly from the tap (iOS requires a fresh user gesture). Cancelling the share sheet does not count as a backup. The download link and copy-to-clipboard are fallbacks. A backup is recorded (`lastBackupAt`) only when delivery succeeded.
+
+**D-27 Restore = Replace, validated before touching data, rolled back on failure.** Parse → envelope → schema version → table names → every row → SHA-256 checksum; then snapshot current data (only if it holds user data, so an empty database never overwrites a useful snapshot), delete, recreate at the backup's own schema version, `bulkAdd`, and restore the snapshot on any error.
+
 **D-5 Content bundled into lazy chunks, precached.** "Content download" = the install precache; no runtime fetch of content. Validated by Zod in tests. Budget: precache ≤ 15 MB, initial JS ≤ 250 kB gzip.
 
 **D-6 Offline-readiness verification.** Build emits `offline-manifest.json`; the client checks every URL in `caches` and exposes Repair. iOS can evict caches independently of IndexedDB.

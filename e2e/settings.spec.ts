@@ -85,14 +85,14 @@ test('backup export, tamper rejection, and restore round-trip through Settings',
   await expect(preview).toBeVisible();
   await expect(preview.getByText('Skills')).toBeVisible();
   await preview.getByRole('button', { name: 'Replace my data' }).click();
+  const reloaded = page.waitForEvent('load'); // Settings reloads the app after a restore
   await page
     .getByRole('dialog', { name: 'Replace all data on this device?' })
     .getByRole('button', { name: 'Replace' })
     .click();
+  await reloaded;
 
-  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   expect(await skillNames(page)).toEqual(['Chess', 'Rubik']);
 });
 
@@ -118,9 +118,11 @@ test('restoring from the recovery screen after storage was wiped', async ({ page
     .getByRole('button', { name: 'Replace' })
     .click();
 
-  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(page.getByRole('heading', { name: 'Your data appears to be missing' })).toHaveCount(
+    0,
+    { timeout: 15_000 },
+  );
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   expect(await skillNames(page)).toEqual(['Chess', 'Go', 'Rubik']);
 });
 
@@ -146,14 +148,14 @@ test('erase all data wipes everything and the app starts clean (no false loss al
   await openSettings(page);
 
   await page.getByRole('button', { name: 'Erase all data on this device' }).click();
+  const reloaded = page.waitForEvent('load');
   await page
     .getByRole('dialog', { name: 'Erase all data?' })
     .getByRole('button', { name: 'Erase everything' })
     .click();
+  await reloaded;
 
-  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Your data appears to be missing' })).toHaveCount(
     0,
   );

@@ -43,10 +43,10 @@ All three serve `sw.js` and `manifest.webmanifest` correctly with no extra confi
 1. Tap the **Share** button → **Add to Home Screen** (scroll the share sheet if needed) → keep "Open as Web App" on if shown → **Add**.
 2. Open SkillForge **from the Home Screen icon** (not from Safari). It should open full-screen with no Safari bars.
 3. **Do your first-run setup inside the installed app**, not in the Safari tab: the installed app has its own, separate storage.
-4. In *Settings → Offline*, wait for **Ready offline ✓** (the full app and all learning content are cached). Stay online until it shows.
+4. In *Settings → Offline*, wait for **Ready offline** (the full app and all learning content are cached). Stay online until it shows.
 
 ## 5. Test offline
-1. Settings shows **Ready offline ✓**.
+1. Settings shows **Ready offline**. (If it says Incomplete, tap **Repair** while online.)
 2. Enable **Airplane Mode**, force-quit SkillForge from the app switcher, relaunch from the icon.
 3. Open every module; log a Rubik solve and a vocabulary review; confirm they appear in Progress.
 4. Disable Airplane Mode; data must still be there.
@@ -56,12 +56,12 @@ Deploy the new `dist` to the same URL. Next time you open the app online, an **U
 
 ## 7. Back up and restore personal data
 **Back up (do this weekly; the app reminds you after 14 days):**
-*Settings → Data → Export backup* → Share sheet → **Save to Files** (iCloud Drive recommended) or AirDrop to your PC. Keep at least two recent copies.
+*Settings → Your data → Back up my data* → **Save to Files or share** (iCloud Drive recommended) or AirDrop to your PC. If that button is missing, use **Download file** or **Copy as text**. Keep at least two recent copies. The file is not encrypted: store it somewhere private.
 
 **Restore (new phone, reinstall, or data loss):**
 1. Install the app from the Home Screen first (§4) and wait for Ready offline.
-2. *Settings → Data → Import backup* → choose the `.json` file → review the summary (record counts, date range) → confirm.
-3. The app snapshots current data, replaces it with the backup, and reloads.
+2. *Settings → Your data → Restore from backup file* (or the same button on the recovery screen if the app reports missing data) → choose the `.json` file → review the summary (counts and date) → **Replace my data** → confirm. Files that are damaged, edited or from a newer app version are refused before anything changes.
+3. The app keeps a safety copy of your current data, replaces it with the backup, and reloads. If anything fails, your previous data is restored automatically.
 
 **Warnings:** deleting the Home Screen icon deletes all app data; changing the hosting URL creates an empty app; iOS may evict website data under extreme storage pressure. Backups are your only guaranteed protection.
 

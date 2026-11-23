@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # SkillForge
 
 Personal growth and training hub – an offline-first PWA for one iPhone (Rubik, English, Java & Spring, developer tools, Caro, Chess, Go, with a shared XP / streak / goals engine). No backend, no accounts; all data stays on the device in IndexedDB.
@@ -20,6 +19,3 @@ Node 22 (`>=22.12`).
 | `npm run verify:full` | verify + build + e2e |
 
 See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for hosting, installing on iPhone, offline testing and backup/restore.
-=======
-# vibe-code-skill-forge
->>>>>>> 02cd2a8c7a8ae3dde269224948373efbcad5e657

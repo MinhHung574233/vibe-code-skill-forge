@@ -91,7 +91,7 @@ Vibration API is unavailable on iOS Safari, so feedback is visual (scale, colour
 4. Skill progress (top 4 by priority).
 5. This week (mini bar + total time).
 6. Recent activity (last 5).
-7. Conditional banners (priority order, at most one): *Update ready* · *Backup overdue* · *Install to Home Screen* (browser only) · *Offline incomplete*.
+7. Conditional banner, **at most one**, shown at the top of every tab (implemented in `StatusBanners`), priority: *Update ready* > *Offline files missing* > *Backup reminder* > *Install to Home Screen* (iOS browser only).
 
 At most one chart above the fold.
 

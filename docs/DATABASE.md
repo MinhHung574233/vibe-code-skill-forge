@@ -112,6 +112,9 @@ ratingHistory:    'id, game, at'
 - **Reminders:** backup-age banner (>14 days or >200 new records).
 - Export excludes bundled content (it isn't in the DB) and the snapshot DB.
 
+### Implementation status (M1.4)
+`src/db/backup.ts`: `buildBackup`, `parseBackup`, `importBackup`, `summarize`, `ROW_SCHEMAS`. Export excludes `drafts`. Import validates fully before any write, snapshots only when the live database holds user data, and rolls back on failure. Backups from an older schema are written at that version and migrated forward by the next boot. Delivery is in `src/services/backupFile.ts`; UI in `features/settings/ui` (export sheet, import flow shared with the recovery screen). Replace-only; Merge remains deferred.
+
 ## 6. Failure handling
 
 - Open/upgrade failure or missing IndexedDB → boot recovery screen (retry, restore snapshot, import backup, export readable data).
