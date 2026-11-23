@@ -12,19 +12,25 @@ import { defineConfig } from '@playwright/test';
  * Neither replaces the real-iPhone checklist in docs/IOS_PWA.md.
  */
 const useWebkit = process.env.E2E_WEBKIT === '1';
+/** Set E2E_BASE_URL to run the same tests against a deployed site instead of a local build. */
+const remoteBaseUrl = process.env.E2E_BASE_URL;
 
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: false,
   retries: 0,
   reporter: [['list']],
-  use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure' },
-  webServer: {
-    command: 'npm run preview -- --port 4173 --strictPort',
-    url: 'http://localhost:4173',
-    reuseExistingServer: false,
-    timeout: 60_000,
-  },
+  use: { baseURL: remoteBaseUrl ?? 'http://localhost:4173', trace: 'retain-on-failure' },
+  ...(remoteBaseUrl
+    ? {}
+    : {
+        webServer: {
+          command: 'npm run preview -- --port 4173 --strictPort',
+          url: 'http://localhost:4173',
+          reuseExistingServer: false,
+          timeout: 60_000,
+        },
+      }),
   projects: useWebkit
     ? [
         {

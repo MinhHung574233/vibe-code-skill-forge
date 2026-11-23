@@ -64,8 +64,8 @@ export function ListRow({
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate type-body">{title}</span>
-        {subtitle && <span className="block truncate type-subhead text-muted">{subtitle}</span>}
+        <span className="block break-words type-body">{title}</span>
+        {subtitle && <span className="block break-words type-subhead text-muted">{subtitle}</span>}
       </span>
       {accessory ?? (interactive && <Icon name="chevronRight" size={18} className="text-muted" />)}
     </>

@@ -151,7 +151,7 @@ export function SettingsScreen() {
           iconColor="#64748b"
         />
         <ListRow
-          title="Protected from clean-up"
+          title="Storage protection"
           subtitle={
             storage.persisted === null
               ? 'iOS decides; this cannot be confirmed'
