@@ -79,7 +79,8 @@ export const MODULES: readonly ModuleDef[] = [
     subtitle: 'Puzzles, openings, rating',
     icon: 'chess',
     color: '#64748b',
-    status: 'planned',
+    status: 'available',
+    route: '/practice/chess',
     milestone: 'M3.6',
   },
   {

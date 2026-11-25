@@ -12,7 +12,14 @@ const MODULE_TITLES = [
 ];
 
 /** Modules that open from Practice (the rest still say "Coming soon"). */
-const BUILT_MODULES = ['Rubik’s Cube', 'English', 'Java & Spring Boot', 'Developer Tools', 'Caro'];
+const BUILT_MODULES = [
+  'Rubik’s Cube',
+  'English',
+  'Java & Spring Boot',
+  'Developer Tools',
+  'Caro',
+  'Chess',
+];
 
 async function goTab(page: Page, name: string) {
   await page.getByRole('link', { name, exact: true }).click();
