@@ -73,6 +73,12 @@ Chosen conservatively where "latest" has an ecosystem gap (TypeScript). No exper
 
 **D-35 Modules are lazy chunks mounted with nested routes.** Each module root is mounted at `practice/<id>/*` and declares its own relative routes, so adding a module changes no shared route code beyond one line. Chunks are precached, so modules work offline (tested).
 
+**D-36 Board-game engines run in module Web Workers with a main-thread fallback.** The CSP allows only `worker-src 'self'`, so each worker is a separate same-origin file (precached). Tests and failures use the fallback. Engines are deterministic given position and level (node budgets are the primary limit; wall-clock caps are a safety net), so behaviour is reproducible and testable.
+
+**D-37 Game XP is for finished games and first solves.** A game earns a record only when it ends on the board with at least five moves by the player; resigning or abandoning records nothing. Puzzles and tsumego record XP on the first clean solve only (idempotent key per puzzle). These choices stop XP farming but mean a resigned game does not appear in the stats; recording resignations as losses is a one-line change if wanted.
+
+**D-38 Puzzles and problems are proven, not trusted.** Chess puzzles are checked by the engine and by exhaustive search (mate depth, uniqueness, material gain); Go problems by exhaustive search with Benson-alive/capture definitions. Items that failed verification were fixed or dropped rather than shipped.
+
 **D-5 Content bundled into lazy chunks, precached.** "Content download" = the install precache; no runtime fetch of content. Validated by Zod in tests. Budget: precache ≤ 15 MB, initial JS ≤ 250 kB gzip.
 
 **D-6 Offline-readiness verification.** Build emits `offline-manifest.json`; the client checks every URL in `caches` and exposes Repair. iOS can evict caches independently of IndexedDB.

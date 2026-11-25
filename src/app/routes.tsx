@@ -58,6 +58,13 @@ export const routes: RouteObject[] = [
         },
       },
       {
+        path: 'practice/go/*',
+        lazy: async () => {
+          const { GoModule } = await import('@/features/go/ui/GoModule');
+          return { Component: GoModule };
+        },
+      },
+      {
         path: 'practice/rubik/*',
         lazy: async () => {
           const { RubikModule } = await import('@/features/rubik/ui/RubikModule');

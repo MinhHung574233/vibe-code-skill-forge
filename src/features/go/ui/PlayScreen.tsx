@@ -1,0 +1,519 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { Button } from '@/components/Button';
+import { Card } from '@/components/Card';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { EmptyState } from '@/components/EmptyState';
+import { Icon } from '@/components/Icon';
+import { Screen } from '@/components/Screen';
+import { MAX_SESSION_SEC } from '@/core/training/config';
+import { systemClock } from '@/core/time/clock';
+import { getDb } from '@/db/boot';
+import type { CompletionOutcome } from '@/features/training/domain/session';
+import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
+import { useTrainingEngine } from '@/features/training/ui/useTraining';
+import { cn } from '@/utils/cn';
+import { clearDraft, draftToSerialized, loadDraft, saveDraft, type GoDraft } from '../data/goDraft';
+import { BLACK, WHITE, opponent, type Color } from '../domain/board';
+import {
+  gameResult,
+  gameStatus,
+  movesBy,
+  passTurn,
+  playStone,
+  restoreGame,
+  resign,
+  resumePlay,
+  serializeGame,
+  undoMove,
+  type GameResult,
+  type GameState,
+  type MoveRejection,
+} from '../domain/game';
+import { createRng } from '../domain/rng';
+import { areaScore, toggleDeadGroup } from '../domain/scoring';
+import { suggestDeadStones } from '../domain/playout';
+import { GoBoard, type PointMark } from './GoBoard';
+import { useGoContext, useGoRepository } from './hooks';
+import { pointName, starPoints } from './labels';
+import { ResultSheet } from './ResultSheet';
+
+/** A finished game must have this many human stones to count (the product rule: >= 5 moves). */
+export const MIN_RECORDED_MOVES = 5;
+
+const REJECTION_TEXT: Record<MoveRejection, string> = {
+  occupied: 'That point is taken.',
+  suicide: 'Not allowed: a stone with no liberties and no capture (suicide).',
+  superko: 'Not allowed: that would repeat an earlier board position (ko). Play elsewhere first.',
+  'game-over': 'The game is over.',
+  'off-board': 'That point is not on the board.',
+};
+
+const colorLabel = (c: Color) => (c === BLACK ? 'Black' : 'White');
+
+/**
+ * The nearest earlier position where it is the human's turn again, so Undo takes back the
+ * computer's reply together with the human's move. `null` when there is nothing to undo.
+ */
+function undoTarget(game: GameState, human: Color): GameState | null {
+  for (let s = undoMove(game); s !== game; s = undoMove(s)) {
+    if (s.toPlay === human && gameStatus(s) === 'playing') return s;
+    if (!s.prev) return null;
+  }
+  return null;
+}
+
+/** One sentence for the screen-reader live region. */
+function describeLastMove(game: GameState, human: Color): string {
+  const move = game.moves.at(-1);
+  if (game.resignedBy !== null) return `${colorLabel(game.resignedBy)} resigned.`;
+  if (!move) return '';
+  const who = move.color === human ? 'You' : 'The computer';
+  if (move.point === null) return `${who} passed.`;
+  const before = game.prev?.captures ?? game.captures;
+  const taken = game.captures.black + game.captures.white - before.black - before.white;
+  const where = pointName(game.config.size, move.point);
+  return `${who} played ${where}${taken > 0 ? ` and captured ${taken} stone${taken > 1 ? 's' : ''}` : ''}.`;
+}
+
+type Stage = 'play' | 'result' | 'xp';
+
+export function PlayScreen() {
+  const { base, createEngine } = useGoContext();
+  const navigate = useNavigate();
+  const repository = useGoRepository();
+  const trainingEngine = useTrainingEngine();
+
+  const [draft, setDraft] = useState<GoDraft | null | undefined>(undefined);
+  const [game, setGame] = useState<GameState | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [thinking, setThinking] = useState(false);
+  const [dead, setDead] = useState<ReadonlySet<number>>(new Set());
+  const [zoomed, setZoomed] = useState(false);
+  const [confirmResign, setConfirmResign] = useState(false);
+  const [stage, setStage] = useState<Stage>('play');
+  const [result, setResult] = useState<{ game: GameResult; recorded: boolean } | null>(null);
+  const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
+  const finished = useRef(false);
+
+  // The AI engine lives as long as the screen; the worker is released on unmount.
+  const engine = useMemo(() => createEngine(), [createEngine]);
+  useEffect(() => () => engine.dispose(), [engine]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadDraft(getDb()).then(async (loaded) => {
+      if (cancelled) return;
+      const restored = loaded ? restoreGame(draftToSerialized(loaded)) : null;
+      if (loaded && !restored) await clearDraft(getDb()); // corrupt record: start clean
+      if (cancelled) return;
+      setDraft(restored ? loaded : null);
+      setGame(restored);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const human: Color = draft?.humanColor === 'white' ? WHITE : BLACK;
+  const ai = opponent(human);
+  const status = game ? gameStatus(game) : 'playing';
+  const humanTurn = game !== null && status === 'playing' && game.toPlay === human;
+
+  // Resume after a reload or an iOS suspension: every move is saved as it is made.
+  useEffect(() => {
+    if (!draft || !game || finished.current) return;
+    const serial = serializeGame(game);
+    const next: GoDraft = {
+      ...draft,
+      moves: serial.moves,
+      resignedBy:
+        serial.resignedBy === null ? null : serial.resignedBy === BLACK ? 'black' : 'white',
+    };
+    void saveDraft(getDb(), next, systemClock.now());
+  }, [draft, game]);
+
+  const finishGame = useCallback(
+    async (state: GameState, final: GameResult) => {
+      if (!draft || finished.current) return;
+      finished.current = true;
+      const endedAt = systemClock.now();
+      const humanMoves = movesBy(state, human);
+      const outcomeFor: 'win' | 'loss' | 'draw' =
+        final.winner === 'draw' ? 'draw' : final.winner === human ? 'win' : 'loss';
+      const recorded = humanMoves >= MIN_RECORDED_MOVES;
+      let saved: CompletionOutcome | null = null;
+      if (recorded) {
+        // an abandoned game resumed days later must still fit the engine's session limits
+        const startedAt = Math.max(draft.startedAt, endedAt - MAX_SESSION_SEC * 1000);
+        const signed = final.score ? final.score.margin : 0;
+        await repository.saveGame({
+          id: draft.gameId,
+          level: draft.level,
+          size: draft.config.size,
+          komi: draft.config.komi,
+          handicap: draft.config.handicap,
+          color: draft.humanColor,
+          result: outcomeFor,
+          margin: human === BLACK ? signed : -signed,
+          by: final.by,
+          startedAt,
+          endedAt,
+          moves: serializeGame(state).moves,
+        });
+        const response = await trainingEngine.recordSession({
+          id: draft.gameId,
+          moduleId: 'go',
+          activityType: 'game_session',
+          startedAt,
+          endedAt: Math.max(endedAt, startedAt + 1000),
+          source: 'timer',
+          score: outcomeFor === 'win' ? 1 : outcomeFor === 'draw' ? 0.5 : 0,
+          result: {
+            kind: 'game',
+            game: 'go',
+            size: draft.config.size,
+            level: draft.level,
+            result: outcomeFor,
+            by: final.by,
+          },
+        });
+        if (response.ok) saved = response.value;
+      }
+      await clearDraft(getDb());
+      setOutcome(saved);
+      setResult({ game: final, recorded });
+      setStage('result');
+    },
+    [draft, human, repository, trainingEngine],
+  );
+
+  // The computer's turn.
+  useEffect(() => {
+    if (!draft || !game || status !== 'playing' || game.toPlay !== ai || finished.current) return;
+    let cancelled = false;
+    setThinking(true);
+    engine
+      .choose(serializeGame(game), draft.level, draft.seed)
+      .then((move) => {
+        if (cancelled) return;
+        setThinking(false);
+        if (move.kind === 'resign') {
+          const next = resign(game, ai);
+          setGame(next);
+          void finishGame(next, gameResult(next));
+          return;
+        }
+        const applied = move.kind === 'move' ? playStone(game, move.point) : passTurn(game);
+        if (applied.ok) {
+          setGame(applied.state);
+          return;
+        }
+        const fallback = passTurn(game); // an unexpected rejection must never trap the player
+        if (fallback.ok) setGame(fallback.state);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setThinking(false);
+        const passed = passTurn(game);
+        if (passed.ok) setGame(passed.state); // an engine failure must never trap the player
+      });
+    return () => {
+      cancelled = true;
+      setThinking(false);
+    };
+  }, [draft, game, status, ai, engine, finishGame]);
+
+  const owner = useMemo(
+    () => (game && status === 'scoring' ? areaScore(game.board, game.config.komi, dead) : null),
+    [game, status, dead],
+  );
+
+  const marks = useMemo(() => {
+    if (!game || !owner) return undefined;
+    const out = new Map<number, PointMark>();
+    for (let p = 0; p < game.board.cells.length; p++) {
+      if (game.board.get(p) !== 0) {
+        if (dead.has(p)) out.set(p, 'dead');
+      } else if (owner.owner[p] === BLACK) out.set(p, 'black-area');
+      else if (owner.owner[p] === WHITE) out.set(p, 'white-area');
+    }
+    return out;
+  }, [game, owner, dead]);
+
+  const place = (point: number) => {
+    if (!game) return;
+    const played = playStone(game, point);
+    if (!played.ok) {
+      setMessage(REJECTION_TEXT[played.reason]);
+      return;
+    }
+    setMessage(null);
+    setPending(null);
+    setGame(played.state);
+  };
+
+  const onPoint = (point: number) => {
+    if (!game) return;
+    if (status === 'scoring') {
+      setDead(toggleDeadGroup(game.board, dead, point));
+      return;
+    }
+    if (!humanTurn || thinking) return;
+    if (game.config.size === 9 || pending === point) {
+      place(point); // 9x9 points are big enough to place on one tap
+      return;
+    }
+    // larger boards: tap to preview, tap the same point (or "Place stone") to confirm
+    const probe = playStone(game, point);
+    if (!probe.ok) {
+      setMessage(REJECTION_TEXT[probe.reason]);
+      setPending(null);
+      return;
+    }
+    setMessage(null);
+    setPending(point);
+  };
+
+  if (draft === undefined) {
+    return (
+      <Screen title="Game" back={{ to: base, label: 'Go' }}>
+        <p className="type-subhead text-muted" aria-busy="true">
+          Loading…
+        </p>
+      </Screen>
+    );
+  }
+  if (!game || !draft) {
+    return (
+      <Screen title="Game" back={{ to: base, label: 'Go' }}>
+        <EmptyState
+          icon="stones"
+          title="No game in progress"
+          description="Start a new game from the Go home screen."
+        />
+      </Screen>
+    );
+  }
+
+  const size = game.config.size;
+  const target = undoTarget(game, human);
+  const last = game.moves.at(-1);
+  const lastPoint = last?.point ?? null;
+  const prisoners = game.captures;
+  const stoneNames = { you: colorLabel(human), computer: colorLabel(ai) };
+
+  const statusText =
+    status === 'scoring'
+      ? 'Both players passed. Tap groups to mark them dead, then accept the result.'
+      : thinking
+        ? 'The computer is thinking…'
+        : humanTurn
+          ? `${last && last.point === null ? 'The computer passed. ' : ''}Your turn (${stoneNames.you})`
+          : 'Waiting for the computer…';
+
+  const goHome = () => void navigate(base);
+
+  const doResign = async () => {
+    setConfirmResign(false);
+    finished.current = true; // resigning records nothing, so there is no draft to keep
+    await clearDraft(getDb());
+    goHome();
+  };
+
+  const runAutoMark = () => {
+    setDead(suggestDeadStones(game.board, createRng(draft.seed + game.moves.length)));
+  };
+
+  const accept = () => void finishGame(game, gameResult(game, dead));
+
+  return (
+    <Screen title="Game" back={{ to: base, label: 'Go' }}>
+      <p role="status" aria-live="polite" className="sr-only">
+        {describeLastMove(game, human)}
+      </p>
+
+      <div className="mb-3">
+        <p className="type-subhead font-medium" aria-busy={thinking}>
+          {statusText}
+        </p>
+        <p className="type-footnote text-muted tabular-nums">
+          Captured: {stoneNames.you} {human === BLACK ? prisoners.black : prisoners.white} ·{' '}
+          {stoneNames.computer} {human === BLACK ? prisoners.white : prisoners.black}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto overscroll-contain rounded-xl">
+        <GoBoard
+          board={game.board}
+          label={`${size} by ${size} Go board`}
+          starPoints={starPoints(size)}
+          lastMove={lastPoint}
+          koPoint={status === 'playing' && game.ko >= 0 ? game.ko : null}
+          pending={pending !== null ? { point: pending, color: human } : null}
+          {...(marks ? { marks } : {})}
+          mode={status === 'scoring' ? 'mark' : humanTurn && !thinking ? 'play' : 'none'}
+          onPoint={onPoint}
+          pointLabel={(p) => pointName(size, p)}
+          zoom={zoomed ? 1.9 : 1}
+        />
+      </div>
+
+      {message && (
+        <p role="alert" className="mt-2 type-subhead text-danger">
+          {message}
+        </p>
+      )}
+
+      {status === 'playing' && (
+        <div className="mt-4 space-y-2">
+          {pending !== null && (
+            <Button fullWidth onClick={() => place(pending)}>
+              Place stone at {pointName(size, pending)}
+            </Button>
+          )}
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!humanTurn || thinking}
+              onClick={() => {
+                setPending(null);
+                const next = passTurn(game);
+                if (next.ok) setGame(next.state);
+              }}
+            >
+              Pass
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!target || thinking}
+              onClick={() => {
+                if (!target) return;
+                setPending(null);
+                setMessage(null);
+                setGame(target);
+              }}
+            >
+              <Icon name="refresh" size={16} />
+              Undo
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setConfirmResign(true)}>
+              Resign
+            </Button>
+          </div>
+          {size > 9 && (
+            <Button variant="ghost" size="sm" fullWidth onClick={() => setZoomed((z) => !z)}>
+              {zoomed ? 'Zoom out' : 'Zoom in'}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {status === 'scoring' && owner && (
+        <Card className="mt-4" aria-labelledby="score-heading" role="region">
+          <h2 id="score-heading" className="type-title-2">
+            Scoring
+          </h2>
+          <table className="mt-3 w-full type-subhead tabular-nums">
+            <thead>
+              <tr className="text-left text-muted">
+                <th className="font-medium">Area scoring</th>
+                <th className="text-right font-medium">Stones</th>
+                <th className="text-right font-medium">Territory</th>
+                <th className="text-right font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" className="text-left font-medium">
+                  Black
+                </th>
+                <td className="text-right">{owner.blackStones}</td>
+                <td className="text-right">{owner.blackTerritory}</td>
+                <td className="text-right">{owner.black}</td>
+              </tr>
+              <tr>
+                <th scope="row" className="text-left font-medium">
+                  White (+{owner.komi} komi)
+                </th>
+                <td className="text-right">{owner.whiteStones}</td>
+                <td className="text-right">{owner.whiteTerritory}</td>
+                <td className="text-right">{owner.white + owner.komi}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className={cn('mt-3 type-headline')}>
+            {gameResult(game, dead).text}
+            {owner.winner === 'draw'
+              ? ''
+              : owner.winner === human
+                ? ' (you win)'
+                : ' (computer wins)'}
+          </p>
+          <div className="mt-4 flex flex-col gap-2">
+            <Button variant="secondary" onClick={runAutoMark}>
+              Auto-mark dead stones (estimate)
+            </Button>
+            <Button variant="secondary" onClick={() => setDead(new Set())}>
+              Clear marks
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setDead(new Set());
+                setGame(resumePlay(game));
+              }}
+            >
+              Resume play
+            </Button>
+            <Button onClick={accept}>Accept result</Button>
+          </div>
+          <p className="mt-3 type-footnote text-muted">
+            Dead stones are removed, then each side counts its stones and the empty points only it
+            touches. Auto-mark is a random-playout guess: check it before accepting.
+          </p>
+        </Card>
+      )}
+
+      <details className="mt-4 rounded-2xl border border-border bg-surface p-4">
+        <summary className="cursor-pointer type-subhead font-medium">Move list</summary>
+        <ol className="mt-2 space-y-0.5 type-footnote text-muted tabular-nums">
+          {game.moves.map((m, i) => (
+            <li key={i}>
+              {i + 1}. {colorLabel(m.color)} {m.point === null ? 'pass' : pointName(size, m.point)}
+            </li>
+          ))}
+          {game.moves.length === 0 && <li>No moves yet.</li>}
+        </ol>
+      </details>
+
+      <ConfirmDialog
+        open={confirmResign}
+        title="Resign this game?"
+        message="You lose the game and it will not be recorded."
+        confirmLabel="Resign"
+        destructive
+        onConfirm={() => void doResign()}
+        onCancel={() => setConfirmResign(false)}
+      />
+
+      <ResultSheet
+        open={stage === 'result' && result !== null}
+        result={result?.game ?? null}
+        humanColor={human}
+        recorded={result?.recorded ?? false}
+        onClose={() => (outcome ? setStage('xp') : goHome())}
+      />
+      <SessionCompleteSheet
+        outcome={stage === 'xp' ? outcome : null}
+        onClose={() => {
+          setStage('play');
+          goHome();
+        }}
+      />
+    </Screen>
+  );
+}

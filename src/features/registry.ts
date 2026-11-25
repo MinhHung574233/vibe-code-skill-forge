@@ -89,7 +89,8 @@ export const MODULES: readonly ModuleDef[] = [
     subtitle: '9×9, 13×13, 19×19 and tsumego',
     icon: 'stones',
     color: '#22c55e',
-    status: 'planned',
+    status: 'available',
+    route: '/practice/go',
     milestone: 'M3.7',
   },
 ];

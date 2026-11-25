@@ -86,7 +86,7 @@ test('play Caro: worker engine replies, game resumes after reload, resign record
   // Reload mid-game: the game is still there and can be resumed.
   await page.reload();
   await page.goto('/#/practice/caro');
-  await expect(page.getByText('Game in progress')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Game in progress' })).toBeVisible();
   await page.getByRole('button', { name: 'Resume' }).click();
   await expect(cell(page, 8, 8, 'your stone')).toBeVisible();
   await expect(page.getByRole('button', { name: /computer stone/ })).toHaveCount(1);

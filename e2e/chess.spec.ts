@@ -7,7 +7,8 @@ import { launchApp } from './helpers';
  * Note: written against the final UI but not yet run, because the route was wired after this file.
  */
 
-const square = (page: Page, name: string) => page.getByRole('button', { name: new RegExp(`^${name}, `) });
+const square = (page: Page, name: string) =>
+  page.getByRole('button', { name: new RegExp(`^${name}, `) });
 
 /** Marks every puzzle except `keep` as solved (raw IndexedDB, like the other specs). */
 async function solveAllExcept(page: Page, keep: string) {
@@ -22,7 +23,14 @@ async function solveAllExcept(page: Page, keep: string) {
           const tx = db.transaction('puzzleProgress', 'readwrite');
           const store = tx.objectStore('puzzleProgress');
           for (const puzzleId of puzzleIds) {
-            store.put({ puzzleId, game: 'chess', solved: 1, attempts: 1, lastAttemptAt: 1, solvedAt: 1 });
+            store.put({
+              puzzleId,
+              game: 'chess',
+              solved: 1,
+              attempts: 1,
+              lastAttemptAt: 1,
+              solvedAt: 1,
+            });
           }
           tx.oncomplete = () => {
             db.close();
@@ -75,7 +83,8 @@ test('the engine answers a move, the game resumes after a reload, and no CSP rul
 }) => {
   const violations: string[] = [];
   page.on('console', (msg) => {
-    if (/Content Security Policy|violates the following/i.test(msg.text())) violations.push(msg.text());
+    if (/Content Security Policy|violates the following/i.test(msg.text()))
+      violations.push(msg.text());
   });
 
   await launchApp(page);
@@ -94,11 +103,15 @@ test('the engine answers a move, the game resumes after a reload, and no CSP rul
   await page.reload();
   await expect(page.getByText('Game in progress')).toBeVisible();
   await page.getByRole('link', { name: 'Resume game' }).click();
+  // The Play screen offers the saved game before starting a new one.
+  await page.getByRole('button', { name: 'Resume game' }).click();
   await expect(page.getByRole('list', { name: 'Moves' })).toContainText('1. e4');
   expect(violations).toEqual([]);
 });
 
-test('an opening can be drilled: wrong moves are refused and the opponent replies', async ({ page }) => {
+test('an opening can be drilled: wrong moves are refused and the opponent replies', async ({
+  page,
+}) => {
   await launchApp(page);
   await page.goto('/#/practice/chess/openings');
   await page.getByRole('link', { name: /Italian Game/ }).click();

@@ -91,7 +91,7 @@ test('Java: fail a quiz, learn from the answers, pass it, and the lesson stays d
     await group.getByRole('radio').first().click();
   }
   await page.getByRole('button', { name: 'Check answers' }).click();
-  await expect(page.getByRole('status')).toContainText('correct');
+  await expect(page.getByText(/of 3 correct/)).toBeVisible();
 
   const passedFirstTry = await page.getByText('Lesson complete.').isVisible();
   if (!passedFirstTry) {
@@ -117,7 +117,7 @@ test('Java: fail a quiz, learn from the answers, pass it, and the lesson stays d
     await page.getByRole('button', { name: 'Check answers' }).click();
   }
 
-  await expect(page.getByRole('status')).toHaveText('3 of 3 correct');
+  await expect(page.getByText('3 of 3 correct')).toBeVisible();
   const sheet = page.getByRole('dialog', { name: 'Session saved' });
   await expect(sheet.getByText('+30 XP')).toBeVisible();
   await sheet.getByRole('button', { name: 'Done' }).click();

@@ -25,7 +25,14 @@ describe('module registry', () => {
     }
   });
 
-  it('marks a module available only once it is built (none are yet)', () => {
-    expect(MODULES.filter((m) => m.status === 'available')).toEqual([]);
+  it('every available module has a route; planned ones have none', () => {
+    for (const m of MODULES) {
+      if (m.status === 'available') expect(m.route, m.id).toBe(`/practice/${m.id}`);
+      else expect(m.route, m.id).toBeUndefined();
+    }
+  });
+
+  it('all seven modules are built', () => {
+    expect(MODULES.filter((m) => m.status === 'available')).toHaveLength(7);
   });
 });

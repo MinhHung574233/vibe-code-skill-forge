@@ -19,6 +19,7 @@ const BUILT_MODULES = [
   'Developer Tools',
   'Caro',
   'Chess',
+  'Go',
 ];
 
 async function goTab(page: Page, name: string) {
