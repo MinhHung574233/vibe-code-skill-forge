@@ -15,6 +15,8 @@ export interface ModuleDef {
   /** Identity colour (icon tile only; text keeps full contrast). DESIGN_SYSTEM §2. */
   color: string;
   status: 'planned' | 'available';
+  /** Where the module opens (set once it is available). */
+  route?: string;
   /** Roadmap milestone that delivers it. */
   milestone: string;
 }
@@ -27,7 +29,8 @@ export const MODULES: readonly ModuleDef[] = [
     subtitle: 'Timer, scrambles, Ao5 / Ao12, algorithms',
     icon: 'cube',
     color: '#ef4444',
-    status: 'planned',
+    status: 'available',
+    route: '/practice/rubik',
     milestone: 'M3.1',
   },
   {
@@ -36,7 +39,8 @@ export const MODULES: readonly ModuleDef[] = [
     subtitle: 'IT vocabulary, flashcards, spaced repetition',
     icon: 'book',
     color: '#0ea5e9',
-    status: 'planned',
+    status: 'available',
+    route: '/practice/english',
     milestone: 'M3.2',
   },
   {

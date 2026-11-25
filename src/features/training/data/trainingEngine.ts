@@ -15,6 +15,7 @@ import { computeStreak, qualifyingDates, type StreakState } from '@/core/trainin
 import { toAppError } from '@/db/errors';
 import type { SkillForgeDB } from '@/db/schema';
 import { DexieSettingsRepository } from '@/features/settings/data/dexieSettingsRepository';
+import { loadModuleFacts, moduleFactTables } from './moduleFacts';
 import {
   RecordSessionSchema,
   sessionActivityKey,
@@ -32,6 +33,7 @@ const tables = (db: SkillForgeDB) => [
   db.dailySummary,
   db.achievements,
   db.settings,
+  ...moduleFactTables(db),
 ];
 
 interface Reward {
@@ -206,20 +208,18 @@ export class DexieTrainingEngine implements TrainingEngine {
   /** Loads the facts, unlocks what now qualifies, and stores the facts as evidence. */
   private async unlockAchievements(streak: StreakState, now: number): Promise<string[]> {
     const db = this.db;
-    const [totalSessions, days, unlockedIds] = await Promise.all([
+    const [totalSessions, days, unlockedIds, moduleFacts] = await Promise.all([
       db.sessions.count(),
       db.dailySummary.toArray(),
       db.achievements.toCollection().primaryKeys(),
+      loadModuleFacts(db),
     ]);
     const facts: UserFacts = {
       totalSessions,
       totalMinutes: days.reduce((sum, d) => sum + d.durationSec, 0) / 60,
       currentStreak: streak.current,
       longestStreak: streak.longest,
-      // Module facts stay 0 until each module exists and supplies its own (Phase 3).
-      vocabLearned: 0,
-      javaPathsCompleted: 0,
-      rubikPersonalBests: 0,
+      ...moduleFacts,
     };
     const fresh = newlyUnlocked(facts, new Set(unlockedIds));
     for (const def of fresh) {

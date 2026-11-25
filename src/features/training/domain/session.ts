@@ -6,6 +6,7 @@ import {
   ACTIVITY_TYPES,
   GENERAL_MODULE,
   MAX_SESSION_SEC,
+  MIN_MODULE_ACTIVITY_SEC,
   MIN_SESSION_SEC,
 } from '@/core/training/config';
 
@@ -30,7 +31,8 @@ export const RecordSessionSchema = z
   .refine(
     (s) => {
       const sec = Math.floor((s.endedAt - s.startedAt) / 1000);
-      return sec >= MIN_SESSION_SEC && sec <= MAX_SESSION_SEC;
+      const min = s.activityType === 'practice_session' ? MIN_SESSION_SEC : MIN_MODULE_ACTIVITY_SEC;
+      return sec >= min && sec <= MAX_SESSION_SEC;
     },
     { message: 'A session must last between 1 minute and 12 hours.' },
   );

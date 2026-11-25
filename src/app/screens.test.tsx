@@ -70,7 +70,7 @@ describe('Home with recorded training', () => {
 });
 
 describe('Practice hub', () => {
-  it('lets you start or log a session, and lists every module as coming soon', async () => {
+  it('lets you start or log a session, and lists every module (built ones open, the rest coming soon)', async () => {
     renderAt('/practice');
     const train = await screen.findByRole('region', { name: 'Train' });
     expect(within(train).getByRole('link', { name: 'Start a session' })).toHaveAttribute(
@@ -80,14 +80,17 @@ describe('Practice hub', () => {
     expect(within(train).getByRole('button', { name: 'Log a session' })).toBeInTheDocument();
 
     for (const module of MODULES) expect(screen.getByText(module.title)).toBeInTheDocument();
-    expect(screen.getAllByText('Coming soon')).toHaveLength(MODULES.length);
-    // Module rows are not links; the only links in the content are the Start button.
+    const planned = MODULES.filter((m) => m.status === 'planned');
+    const open = MODULES.filter((m) => m.status === 'available');
+    if (planned.length > 0) expect(screen.getAllByText('Coming soon')).toHaveLength(planned.length);
+    else expect(screen.queryByText('Coming soon')).toBeNull();
+    // Built modules are links; planned ones are not. The rest of the links is the Start button.
     const main = screen.getByRole('main', { hidden: true });
     expect(
       within(main)
         .getAllByRole('link')
         .map((l) => l.textContent),
-    ).toEqual(['Start a session']);
+    ).toEqual(['Start a session', ...open.map((m) => m.title + m.subtitle)]);
   });
 
   it('logs a session by hand and explains that it earns time but no XP', async () => {

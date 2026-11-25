@@ -18,7 +18,6 @@ import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteShee
 export function PracticeScreen() {
   const [logOpen, setLogOpen] = useState(false);
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
-  const available = MODULES.filter((m) => m.status === 'available');
 
   return (
     <Screen title="Practice">
@@ -43,14 +42,7 @@ export function PracticeScreen() {
         </div>
       </Card>
 
-      <Section
-        title="Training modules"
-        footer={
-          available.length === 0
-            ? 'Guided modules open here as they are built. Rubik’s Cube comes first, then English, Java & Spring and Developer Tools, then the board games.'
-            : undefined
-        }
-      >
+      <Section title="Training modules">
         {MODULES.map((module) => (
           <ListRow
             key={module.id}
@@ -58,7 +50,9 @@ export function PracticeScreen() {
             subtitle={module.subtitle}
             icon={module.icon}
             iconColor={module.color}
-            accessory={<Badge>{module.status === 'planned' ? 'Coming soon' : 'Open'}</Badge>}
+            {...(module.status === 'available' && module.route
+              ? { to: module.route }
+              : { accessory: <Badge>Coming soon</Badge> })}
           />
         ))}
       </Section>

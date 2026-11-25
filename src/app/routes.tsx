@@ -22,6 +22,20 @@ export const routes: RouteObject[] = [
       { path: 'skills/:id', element: <SkillDetailScreen /> },
       { path: 'practice', element: <PracticeScreen /> },
       { path: 'practice/session', element: <SessionScreen /> },
+      {
+        path: 'practice/english/*',
+        lazy: async () => {
+          const { EnglishModule } = await import('@/features/english/ui/EnglishModule');
+          return { Component: EnglishModule };
+        },
+      },
+      {
+        path: 'practice/rubik/*',
+        lazy: async () => {
+          const { RubikModule } = await import('@/features/rubik/ui/RubikModule');
+          return { Component: RubikModule };
+        },
+      },
       { path: 'progress', element: <ProgressScreen /> },
       { path: 'settings', element: <SettingsScreen /> },
       {

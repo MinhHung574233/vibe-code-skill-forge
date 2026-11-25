@@ -9,6 +9,8 @@ export const ACTIVITY_TYPES = [
   'chess_puzzle',
   'rubik_session',
   'daily_challenge',
+  'game_session', // a finished board-game match (Caro, Chess, Go)
+  'tools_lesson', // Developer Tools lesson
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -24,6 +26,8 @@ export const DEFAULT_XP_RULES: Readonly<Record<ActivityType, number>> = {
   chess_puzzle: 10,
   rubik_session: 15,
   daily_challenge: 50,
+  game_session: 15,
+  tools_lesson: 20,
 };
 
 export const ACTIVITY_LABELS: Readonly<Record<ActivityType, string>> = {
@@ -33,6 +37,8 @@ export const ACTIVITY_LABELS: Readonly<Record<ActivityType, string>> = {
   chess_puzzle: 'Chess puzzle',
   rubik_session: 'Rubik session',
   daily_challenge: 'Daily challenge',
+  game_session: 'Game',
+  tools_lesson: 'Developer Tools lesson',
 };
 
 /** Module id used for sessions that do not belong to one of the seven modules. */
@@ -47,6 +53,9 @@ export const MIN_REWARDED_TIMER_SESSION_SEC = 5 * 60;
 /** Sanity bounds for a single session (a forgotten running timer must not distort stats). */
 export const MAX_SESSION_SEC = 12 * 60 * 60;
 export const MIN_SESSION_SEC = 60;
+
+/** Module activities (a puzzle, a lesson, a game) can legitimately be shorter than a minute. */
+export const MIN_MODULE_ACTIVITY_SEC = 1;
 
 /** A skill's progress is measured against this many days when it has a weekly goal. */
 export const WEEK_DAYS = 7;

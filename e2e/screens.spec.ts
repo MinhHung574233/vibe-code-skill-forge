@@ -11,6 +11,9 @@ const MODULE_TITLES = [
   'Go',
 ];
 
+/** Modules that open from Practice (the rest still say "Coming soon"). */
+const BUILT_MODULES = ['Rubik’s Cube', 'English'];
+
 async function goTab(page: Page, name: string) {
   await page.getByRole('link', { name, exact: true }).click();
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
@@ -36,7 +39,11 @@ test('Practice lets you train today and lists all seven modules as coming soon',
   await expect(train.getByRole('button', { name: 'Log a session' })).toBeVisible();
   for (const title of MODULE_TITLES)
     await expect(page.getByText(title, { exact: true })).toBeVisible();
-  await expect(page.getByText('Coming soon')).toHaveCount(7);
+  await expect(page.getByText('Coming soon')).toHaveCount(
+    MODULE_TITLES.length - BUILT_MODULES.length,
+  );
+  for (const title of BUILT_MODULES)
+    await expect(page.getByRole('link', { name: new RegExp(title) })).toBeVisible();
 });
 
 test('the daily goal set in Settings persists and shows on Home', async ({ page }) => {
