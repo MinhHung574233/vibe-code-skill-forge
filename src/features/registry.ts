@@ -69,7 +69,8 @@ export const MODULES: readonly ModuleDef[] = [
     subtitle: 'Five in a row against a real engine',
     icon: 'grid',
     color: '#8b5cf6',
-    status: 'planned',
+    status: 'available',
+    route: '/practice/caro',
     milestone: 'M3.5',
   },
   {

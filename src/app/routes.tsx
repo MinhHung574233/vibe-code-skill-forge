@@ -44,6 +44,13 @@ export const routes: RouteObject[] = [
         },
       },
       {
+        path: 'practice/caro/*',
+        lazy: async () => {
+          const { CaroModule } = await import('@/features/caro/ui/CaroModule');
+          return { Component: CaroModule };
+        },
+      },
+      {
         path: 'practice/rubik/*',
         lazy: async () => {
           const { RubikModule } = await import('@/features/rubik/ui/RubikModule');
