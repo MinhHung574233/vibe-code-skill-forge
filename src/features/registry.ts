@@ -49,7 +49,8 @@ export const MODULES: readonly ModuleDef[] = [
     subtitle: 'Core to advanced, architecture, performance',
     icon: 'code',
     color: '#f97316',
-    status: 'planned',
+    status: 'available',
+    route: '/practice/java',
     milestone: 'M3.3',
   },
   {
@@ -58,7 +59,8 @@ export const MODULES: readonly ModuleDef[] = [
     subtitle: 'IntelliJ, Git & GitLab, DevOps tips',
     icon: 'terminal',
     color: '#14b8a6',
-    status: 'planned',
+    status: 'available',
+    route: '/practice/tools',
     milestone: 'M3.4',
   },
   {

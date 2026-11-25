@@ -30,6 +30,20 @@ export const routes: RouteObject[] = [
         },
       },
       {
+        path: 'practice/java/*',
+        lazy: async () => {
+          const { JavaModule } = await import('@/features/java/ui/JavaModule');
+          return { Component: JavaModule };
+        },
+      },
+      {
+        path: 'practice/tools/*',
+        lazy: async () => {
+          const { ToolsModule } = await import('@/features/tools/ui/ToolsModule');
+          return { Component: ToolsModule };
+        },
+      },
+      {
         path: 'practice/rubik/*',
         lazy: async () => {
           const { RubikModule } = await import('@/features/rubik/ui/RubikModule');
