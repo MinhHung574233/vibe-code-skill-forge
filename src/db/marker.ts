@@ -21,6 +21,13 @@ export const MARKER_TABLES = [
   'xpLedger',
   'dailySummary',
   'achievements',
+  'rubikSolves',
+  'algorithmProgress',
+  'vocabProgress',
+  'lessonProgress',
+  'gameRecords',
+  'puzzleProgress',
+  'ratings',
 ] as const;
 
 /** Tables intentionally excluded (rebuildable or transient). Together with MARKER_TABLES this

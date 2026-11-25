@@ -105,3 +105,79 @@ export interface AchievementRow {
   unlockedAt: number;
   evidence: Record<string, unknown>;
 }
+
+// ---- Training modules (schema v3) -------------------------------------------------------------
+
+/** One Rubik solve. `timeMs` is the raw time; the penalty is applied when computing results. */
+export interface RubikSolveRow {
+  id: string;
+  timeMs: number;
+  penalty: 'none' | 'plus2' | 'dnf';
+  scramble: string;
+  createdAt: number;
+  localDate: string;
+}
+
+/** Learning state of one algorithm from the bundled library. */
+export interface AlgorithmProgressRow {
+  algId: string;
+  status: 'learning' | 'learned';
+  updatedAt: number;
+}
+
+/** Spaced-repetition (SM-2) state of one bundled vocabulary word. */
+export interface VocabProgressRow {
+  wordId: string;
+  state: 'learning' | 'review';
+  /** SM-2 ease factor, never below 1.3. */
+  ease: number;
+  intervalDays: number;
+  repetitions: number;
+  lapses: number;
+  /** Epoch ms when the card is next due. */
+  dueAt: number;
+  lastReviewedAt: number;
+  createdAt: number;
+}
+
+/** Completion of one bundled lesson (Java, Developer Tools). */
+export interface LessonProgressRow {
+  lessonId: string;
+  pathId: string;
+  completedAt: number;
+  /** Best quiz score 0..1. */
+  bestScore: number;
+  attempts: number;
+}
+
+/** A finished board-game match (Caro, Chess, Go). */
+export interface GameRecordRow {
+  id: string;
+  game: 'caro' | 'chess' | 'go';
+  /** Opponent strength label, e.g. `easy`, `medium`, `hard`. */
+  level: string;
+  result: 'win' | 'loss' | 'draw';
+  /** Free-form per-game details (board size, moves, ...). */
+  details?: Record<string, unknown>;
+  startedAt: number;
+  endedAt: number;
+  localDate: string;
+}
+
+/** Progress on one bundled puzzle (chess puzzles, tsumego). */
+export interface PuzzleProgressRow {
+  puzzleId: string;
+  game: 'chess' | 'go';
+  solved: 0 | 1;
+  attempts: number;
+  lastAttemptAt: number;
+  solvedAt?: number;
+}
+
+/** A rating value, e.g. key `chess-puzzle` or `chess-play`. */
+export interface RatingRow {
+  key: string;
+  value: number;
+  games: number;
+  updatedAt: number;
+}

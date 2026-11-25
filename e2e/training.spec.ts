@@ -145,7 +145,7 @@ test('training data is part of a backup and restores to the same Home numbers', 
     checksum: string;
     tables: Record<string, unknown[]>;
   };
-  expect(backup.schemaVersion).toBe(2);
+  expect(backup.schemaVersion).toBe(3);
   expect(backup.checksum).toMatch(/^[0-9a-f]{64}$/);
   expect(backup.tables.sessions).toHaveLength(2);
   expect(backup.tables.completions).toHaveLength(2);

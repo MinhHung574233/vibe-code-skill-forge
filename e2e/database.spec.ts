@@ -40,18 +40,25 @@ test('creates the current database on first launch and keeps data across a reloa
   );
   expect(initial.stores).toEqual([
     'achievements',
+    'algorithmProgress',
     'completions',
     'dailySummary',
     'drafts',
+    'gameRecords',
+    'lessonProgress',
+    'puzzleProgress',
+    'ratings',
+    'rubikSolves',
     'sessions',
     'settings',
     'skillGoals',
     'skills',
+    'vocabProgress',
     'xpLedger',
     'xpRules',
   ]);
-  expect(initial.version).toBe(20); // Dexie version 2 = IndexedDB version 20
-  expect(initial.schemaVersion).toBe(2);
+  expect(initial.version).toBe(30); // Dexie version 3 = IndexedDB version 30
+  expect(initial.schemaVersion).toBe(3);
 
   await page.evaluate(
     () =>

@@ -58,7 +58,7 @@ test('backup export, tamper rejection, and restore round-trip through Settings',
     checksum: string;
     tables: Record<string, unknown[]>;
   };
-  expect(backup).toMatchObject({ app: 'skillforge', schemaVersion: 2 });
+  expect(backup).toMatchObject({ app: 'skillforge', schemaVersion: 3 });
   expect(backup.checksum).toMatch(/^[0-9a-f]{64}$/);
   expect(backup.tables.skills).toHaveLength(2);
   expect(backup.tables.drafts).toBeUndefined();

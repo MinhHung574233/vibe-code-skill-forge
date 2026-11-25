@@ -1,9 +1,16 @@
 import Dexie, { type DexieOptions, type Table, type Transaction } from 'dexie';
 import type {
   AchievementRow,
+  AlgorithmProgressRow,
   CompletionRow,
   DailySummaryRow,
   DraftRow,
+  GameRecordRow,
+  LessonProgressRow,
+  PuzzleProgressRow,
+  RatingRow,
+  RubikSolveRow,
+  VocabProgressRow,
   SessionRow,
   SettingRow,
   SkillGoalRow,
@@ -48,6 +55,19 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
       achievements: 'achievementId',
     },
   },
+  {
+    // Training modules (Phase 3). New stores only, so no data upgrade is needed.
+    version: 3,
+    stores: {
+      rubikSolves: 'id, createdAt, localDate',
+      algorithmProgress: 'algId',
+      vocabProgress: 'wordId, dueAt, state',
+      lessonProgress: 'lessonId, pathId',
+      gameRecords: 'id, game, endedAt',
+      puzzleProgress: 'puzzleId, game',
+      ratings: 'key',
+    },
+  },
 ];
 
 export function latestVersion(versions: readonly SchemaVersion[]): number {
@@ -72,6 +92,13 @@ export class SkillForgeDB extends Dexie {
   declare xpLedger: Table<XpLedgerRow, string>;
   declare dailySummary: Table<DailySummaryRow, string>;
   declare achievements: Table<AchievementRow, string>;
+  declare rubikSolves: Table<RubikSolveRow, string>;
+  declare algorithmProgress: Table<AlgorithmProgressRow, string>;
+  declare vocabProgress: Table<VocabProgressRow, string>;
+  declare lessonProgress: Table<LessonProgressRow, string>;
+  declare gameRecords: Table<GameRecordRow, string>;
+  declare puzzleProgress: Table<PuzzleProgressRow, string>;
+  declare ratings: Table<RatingRow, string>;
 
   constructor(
     name: string = DB_NAME,
