@@ -1,5 +1,16 @@
 import Dexie, { type DexieOptions, type Table, type Transaction } from 'dexie';
-import type { DraftRow, SettingRow, SkillGoalRow, SkillRow } from './rows';
+import type {
+  AchievementRow,
+  CompletionRow,
+  DailySummaryRow,
+  DraftRow,
+  SessionRow,
+  SettingRow,
+  SkillGoalRow,
+  SkillRow,
+  XpLedgerRow,
+  XpRuleRow,
+} from './rows';
 
 export const DB_NAME = 'skillforge';
 
@@ -24,6 +35,19 @@ export const SCHEMA_VERSIONS: readonly SchemaVersion[] = [
       drafts: 'key',
     },
   },
+  {
+    // Training engine (DATABASE.md §3 v2). New stores only, so no data upgrade is needed.
+    version: 2,
+    stores: {
+      sessions: 'id, moduleId, skillId, localDate, startedAt, [moduleId+startedAt]',
+      // PRIMARY KEY = idempotency anchor: one row per rewardable/completable thing, ever.
+      completions: 'activityKey, moduleId, localDate',
+      xpRules: 'activityType',
+      xpLedger: 'id, &activityKey, localDate, moduleId',
+      dailySummary: 'localDate',
+      achievements: 'achievementId',
+    },
+  },
 ];
 
 export function latestVersion(versions: readonly SchemaVersion[]): number {
@@ -42,6 +66,12 @@ export class SkillForgeDB extends Dexie {
   declare skills: Table<SkillRow, string>;
   declare skillGoals: Table<SkillGoalRow, string>;
   declare drafts: Table<DraftRow, string>;
+  declare sessions: Table<SessionRow, string>;
+  declare completions: Table<CompletionRow, string>;
+  declare xpRules: Table<XpRuleRow, string>;
+  declare xpLedger: Table<XpLedgerRow, string>;
+  declare dailySummary: Table<DailySummaryRow, string>;
+  declare achievements: Table<AchievementRow, string>;
 
   constructor(
     name: string = DB_NAME,

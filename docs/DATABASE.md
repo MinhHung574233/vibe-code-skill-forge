@@ -115,6 +115,9 @@ ratingHistory:    'id, game, at'
 ### Implementation status (M1.4)
 `src/db/backup.ts`: `buildBackup`, `parseBackup`, `importBackup`, `summarize`, `ROW_SCHEMAS`. Export excludes `drafts`. Import validates fully before any write, snapshots only when the live database holds user data, and rolls back on failure. Backups from an older schema are written at that version and migrated forward by the next boot. Delivery is in `src/services/backupFile.ts`; UI in `features/settings/ui` (export sheet, import flow shared with the recovery screen). Replace-only; Merge remains deferred.
 
+### Implementation status (Phase 2, schema v2)
+Built as designed in §3 v2 except: **no `dailyGoals` store** (the daily goal is the `dailyGoalMinutes` setting; skill goals are `skillGoals` rows) and **`dailySummary` has no `goalsMet`** (derived from duration vs goal at read time). New row types in `src/db/rows.ts`; all six new stores are in `MARKER_TABLES` (data-loss detector) and have backup row validation (`ROW_SCHEMAS`); both are enforced by tests. `completions.activityKey` is the primary key and `xpLedger.activityKey` is a unique index. Upgrading v1 → v2 only adds stores, so no data fix-up exists; the pre-migration snapshot still runs.
+
 ## 6. Failure handling
 
 - Open/upgrade failure or missing IndexedDB → boot recovery screen (retry, restore snapshot, import backup, export readable data).

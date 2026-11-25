@@ -42,6 +42,49 @@ const ROW_SCHEMAS: Record<string, z.ZodType> = {
     createdAt: z.number(),
     updatedAt: z.number(),
   }),
+  sessions: z.looseObject({
+    id: z.string().min(1),
+    moduleId: z.string(),
+    activityType: z.string(),
+    startedAt: z.number(),
+    endedAt: z.number(),
+    durationSec: z.number().nonnegative(),
+    localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    source: z.enum(['timer', 'manual']),
+    createdAt: z.number(),
+  }),
+  completions: z.looseObject({
+    activityKey: z.string().min(1),
+    moduleId: z.string(),
+    activityType: z.string(),
+    completedAt: z.number(),
+    localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  }),
+  xpRules: z.looseObject({
+    activityType: z.string().min(1),
+    xp: z.number().int().nonnegative(),
+    enabled: z.union([z.literal(0), z.literal(1)]),
+    updatedAt: z.number(),
+  }),
+  xpLedger: z.looseObject({
+    id: z.string().min(1),
+    activityKey: z.string().min(1),
+    xp: z.number().int(),
+    moduleId: z.string(),
+    localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    awardedAt: z.number(),
+  }),
+  dailySummary: z.looseObject({
+    localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    durationSec: z.number().nonnegative(),
+    sessions: z.number().int().nonnegative(),
+    activities: z.number().int().nonnegative(),
+    xp: z.number().int(),
+  }),
+  achievements: z.looseObject({
+    achievementId: z.string().min(1),
+    unlockedAt: z.number(),
+  }),
 };
 
 /** Tables the backup format knows how to validate (exported for the coverage test). */

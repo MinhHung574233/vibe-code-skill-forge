@@ -16,14 +16,20 @@ describe('schema versions', () => {
     expect(CURRENT_SCHEMA_VERSION).toBe(versions.at(-1));
   });
 
-  it('declares the v1 stores from DATABASE.md', async () => {
+  it('declares the stores from DATABASE.md (v1 core + v2 training engine)', async () => {
     const db = new SkillForgeDB(NAME);
     await db.open();
     expect(db.tables.map((t) => t.name).sort()).toEqual([
+      'achievements',
+      'completions',
+      'dailySummary',
       'drafts',
+      'sessions',
       'settings',
       'skillGoals',
       'skills',
+      'xpLedger',
+      'xpRules',
     ]);
     expect(
       db

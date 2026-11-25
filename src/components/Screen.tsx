@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { cn } from '@/utils/cn';
+import { Icon } from './Icon';
 
 interface ScreenProps {
   title: string;
   /** Right-aligned header action(s). */
   trailing?: ReactNode;
+  /** Pushed screens: where the back button goes, and what it is called for assistive tech. */
+  back?: { to: string; label: string };
   children?: ReactNode;
   className?: string;
 }
@@ -13,7 +17,7 @@ interface ScreenProps {
  * Tab-root screen with an iOS large title that collapses into a compact bar on scroll.
  * Collapse detection uses IntersectionObserver (no scroll listeners, no jank).
  */
-export function Screen({ title, trailing, children, className }: ScreenProps) {
+export function Screen({ title, trailing, back, children, className }: ScreenProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -36,6 +40,16 @@ export function Screen({ title, trailing, children, className }: ScreenProps) {
           collapsed ? 'border-border bg-bg/85' : 'border-transparent bg-transparent',
         )}
       >
+        {back && (
+          <Link
+            to={back.to}
+            aria-label={`Back to ${back.label}`}
+            className="absolute inset-y-0 left-1 flex min-w-11 items-center gap-0.5 rounded-xl px-2 text-accent active:opacity-60"
+          >
+            <Icon name="chevronLeft" size={22} />
+            <span className="type-callout">{back.label}</span>
+          </Link>
+        )}
         <span
           aria-hidden="true"
           className={cn(

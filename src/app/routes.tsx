@@ -2,7 +2,11 @@ import type { RouteObject } from 'react-router';
 import { ShellScreen } from '@/components/ShellScreen';
 import { DashboardScreen } from '@/features/dashboard/ui/DashboardScreen';
 import { PracticeScreen } from '@/features/practice/ui/PracticeScreen';
+import { ProgressScreen } from '@/features/progress/ui/ProgressScreen';
 import { SettingsScreen } from '@/features/settings/ui/SettingsScreen';
+import { SkillDetailScreen } from '@/features/skills/ui/SkillDetailScreen';
+import { SkillsScreen } from '@/features/skills/ui/SkillsScreen';
+import { SessionScreen } from '@/features/training/ui/SessionScreen';
 import { TabLayout } from './TabLayout';
 
 /**
@@ -14,9 +18,11 @@ export const routes: RouteObject[] = [
     element: <TabLayout />,
     children: [
       { index: true, element: <DashboardScreen /> },
-      { path: 'skills', element: <ShellScreen title="Skills" milestone="M2.4" /> },
+      { path: 'skills', element: <SkillsScreen /> },
+      { path: 'skills/:id', element: <SkillDetailScreen /> },
       { path: 'practice', element: <PracticeScreen /> },
-      { path: 'progress', element: <ShellScreen title="Progress" milestone="M2.5" /> },
+      { path: 'practice/session', element: <SessionScreen /> },
+      { path: 'progress', element: <ProgressScreen /> },
       { path: 'settings', element: <SettingsScreen /> },
       {
         // Developer-only design-system gallery; not linked from the UI.

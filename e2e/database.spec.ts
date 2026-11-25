@@ -10,7 +10,9 @@ async function launch(page: Page) {
   await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible();
 }
 
-test('creates the v1 database on first launch and keeps data across a reload', async ({ page }) => {
+test('creates the current database on first launch and keeps data across a reload', async ({
+  page,
+}) => {
   await launch(page);
 
   const initial = await page.evaluate(
@@ -36,9 +38,20 @@ test('creates the v1 database on first launch and keeps data across a reload', a
         },
       ),
   );
-  expect(initial.stores).toEqual(['drafts', 'settings', 'skillGoals', 'skills']);
-  expect(initial.version).toBe(10); // Dexie version 1 = IndexedDB version 10
-  expect(initial.schemaVersion).toBe(1);
+  expect(initial.stores).toEqual([
+    'achievements',
+    'completions',
+    'dailySummary',
+    'drafts',
+    'sessions',
+    'settings',
+    'skillGoals',
+    'skills',
+    'xpLedger',
+    'xpRules',
+  ]);
+  expect(initial.version).toBe(20); // Dexie version 2 = IndexedDB version 20
+  expect(initial.schemaVersion).toBe(2);
 
   await page.evaluate(
     () =>

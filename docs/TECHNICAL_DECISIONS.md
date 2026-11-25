@@ -59,6 +59,12 @@ Chosen conservatively where "latest" has an ecosystem gap (TypeScript). No exper
 
 **D-28 Production headers via `public/_headers` (Cloudflare/Netlify format), tested locally and live.** CSP `default-src 'self'` with no remote origin, no inline script, no eval; `style-src` keeps 'unsafe-inline' only because React sets style attributes. Hashed `/assets/*` are immutable for a year; `sw.js`, `index.html` and the manifest are `no-cache`. `vite preview` applies the same file through a small plugin (`tools/headersFile.ts`), so the e2e suite exercises the real policy, and the same e2e files run against the deployed site with `E2E_BASE_URL`. The inline theme script moved to `public/theme-init.js`. The CSP e2e found that Zod 4 probes `Function('')`, reported as a violation although caught, so Zod runs with `jitless: true` (`src/app/zodSetup.ts`).
 
+**D-29 XP is earned by effort, not by typing.** Generic practice earns XP only as a real timed session of at least 5 minutes; a hand-logged session counts for time, goals, streak and analytics but earns no XP, and the UI states the reason. Module activities (vocab, Java lesson, chess puzzle, Rubik session, daily challenge) use configurable per-type rewards. Reason: the app is for honest self-tracking and the PRD requires achievements and XP based on actual activity.
+
+**D-30 The engine writes everything in one transaction and reads from a per-day rollup.** `dailySummary` is maintained in the same transaction as the session, so streak, goals and analytics never scan the sessions table and cannot drift from it. Streak and analytics are pure functions of the rollup (`core/training`), unit-tested including DST. Rolling 7/30-day windows are used instead of calendar weeks so periods stay comparable.
+
+**D-31 The running timer is a draft computed from the wall clock.** Only start time and ids are stored (`drafts`), so a reload, suspension or crash loses nothing; a locked phone keeps counting as a stopwatch should; the session id is fixed at start so retries are idempotent. Bounds: at least 1 minute to save, more than 12 hours cannot be saved.
+
 **D-5 Content bundled into lazy chunks, precached.** "Content download" = the install precache; no runtime fetch of content. Validated by Zod in tests. Budget: precache ≤ 15 MB, initial JS ≤ 250 kB gzip.
 
 **D-6 Offline-readiness verification.** Build emits `offline-manifest.json`; the client checks every URL in `caches` and exposes Repair. iOS can evict caches independently of IndexedDB.

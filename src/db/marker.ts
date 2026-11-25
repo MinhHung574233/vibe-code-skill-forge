@@ -12,7 +12,16 @@ import type { SkillForgeDB } from './schema';
  */
 
 /** Tables holding user-authored/earned data. Extended whenever a new user-data store ships. */
-export const MARKER_TABLES = ['skills', 'skillGoals'] as const;
+export const MARKER_TABLES = [
+  'skills',
+  'skillGoals',
+  'sessions',
+  'completions',
+  'xpRules',
+  'xpLedger',
+  'dailySummary',
+  'achievements',
+] as const;
 
 /** Tables intentionally excluded (rebuildable or transient). Together with MARKER_TABLES this
  *  must cover every store; a unit test enforces it so new stores cannot be forgotten. */
@@ -67,7 +76,8 @@ export function totalRows(counts: Record<string, number>): number {
 export async function countMarkerTables(db: SkillForgeDB): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
   for (const name of MARKER_TABLES) {
-    counts[name] = db.tables.some((t) => t.name === name) ? await db.table(name).count() : 0;
+    // A database opened at an older schema version simply lacks the newer stores.
+    if (db.tables.some((t) => t.name === name)) counts[name] = await db.table(name).count();
   }
   return counts;
 }
@@ -102,6 +112,7 @@ export function installMarkerHooks(
     }, DEBOUNCE_MS);
   };
   for (const name of MARKER_TABLES) {
+    if (!db.tables.some((t) => t.name === name)) continue;
     const table = db.table(name);
     table.hook('creating', () => {
       schedule();

@@ -26,6 +26,11 @@ const THEME_OPTIONS: readonly { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
+const STREAK_OPTIONS = [
+  { value: 'any_session', label: 'Any session' },
+  { value: 'goal_met', label: 'Goal reached' },
+] as const;
+
 function readinessView(r: OfflineReadiness): { text: string; sub?: string; tone: BadgeTone } {
   switch (r.state) {
     case 'ready':
@@ -62,6 +67,7 @@ export function SettingsScreen() {
   const settings = useSettingsRepository();
   const lastBackupAt = useSetting('lastBackupAt');
   const dailyGoal = useSetting('dailyGoalMinutes');
+  const streakRule = useSetting('streakRule');
   const now = useNow();
 
   const [exportOpen, setExportOpen] = useState(false);
@@ -100,7 +106,7 @@ export function SettingsScreen() {
 
       <Section
         title="Training"
-        footer="Your goal appears on the Home screen. It starts counting once training sessions are recorded."
+        footer="Your goal appears on the Home screen. The streak rule decides which days count towards your streak."
       >
         <ListRow
           title="Daily goal"
@@ -121,6 +127,17 @@ export function SettingsScreen() {
             )
           }
         />
+        <div className="space-y-2 p-4">
+          <p className="type-body">Streak counts days with</p>
+          {streakRule !== undefined && (
+            <SegmentedControl
+              label="Streak rule"
+              options={STREAK_OPTIONS}
+              value={streakRule}
+              onChange={(v) => void settings.set('streakRule', v)}
+            />
+          )}
+        </div>
       </Section>
 
       <Section

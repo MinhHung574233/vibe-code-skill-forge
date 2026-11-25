@@ -9,7 +9,9 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | Phase 0 – environment check | ✅ 2026-11-22 |
 | Phase 0 – docs rewritten for PWA (PRD, ARCHITECTURE, DATABASE, DESIGN_SYSTEM, TECHNICAL_DECISIONS, ROADMAP + IOS_PWA, DEPLOYMENT) | ✅ drafted 2026-11-22 |
 | Node 22 | ✅ 22.23.5 active |
-| Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ · M1.4 ✅ · M1.5 ✅ (2026-11-23) · **Phase 1 complete** · M2.1 next |
+| Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ · M1.4 ✅ · M1.5 ✅ (2026-11-23) · **Phase 1 complete** |
+| Phase 2 – Core training platform | ✅ M2.1–M2.6 done (2026-11-25), **not yet committed/deployed** · Phase 3 (modules) next |
+| M2.1–M2.6 – engine, streak/goals, achievements, skills, progress, real Home | ✅ 367 unit/integration/UI tests (incl. real v1→v2 upgrade), 32 e2e tests; see "Phase 2 status" below |
 | M1.5 – home, practice hub, headers | ✅ 221 unit tests, 26 e2e tests; CSP + cache headers verified locally and on the live Cloudflare site; see below |
 | M1.4 – settings, PWA layer, backup | ✅ 198 unit/integration tests, 17 e2e tests (stable over 3 parallel runs); see below |
 | M1.3 – database foundation | ✅ 138 unit/integration tests, 12 e2e tests green; see DATABASE.md §7 |
@@ -47,14 +49,34 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | 2026-11-22 | M1.4 e2e (Edge, 390×844 touch) | ✅ 17/17 ×3 runs (5 new): Settings shows Ready offline; evicted Cache Storage → Incomplete + banner → Repair → Ready; export → real downloaded file has correct envelope/checksum/2 skills/no drafts; tampered file rejected; diverge → restore → data back; wiped storage → recovery screen → restore from file; non-backup file refused; erase all → clean start with no false loss alert |
 | 2026-11-23 | M1.5 `npm run verify` | ✅ tsc · eslint · vitest 26 files / 221 tests (including tools/): module registry, NumberStepper, Home (live goal, honest empty states, skill count ignoring deleted), Practice hub, daily-goal persistence, `_headers` parser and real-file policy checks, Zod jitless |
 | 2026-11-23 | M1.5 e2e (Edge, production headers applied) | ✅ new: security/cache headers; app tour under the CSP with **zero violations and zero console errors**; no inline scripts; Home goal + empty states; Practice lists 7 modules (Coming soon); daily goal persists and shows on Home; every control ≥44px on Home/Practice/Settings; light+dark no overflow (screenshots reviewed) |
-| 2026-11-22 | Real iPhone | ⬜ not yet (needs a deployed HTTPS URL; M1.5) |
+| 2026-11-25 | Phase 2 `npm run verify:full` | ✅ tsc · eslint · vitest 38 files / 367 tests · build (precache 66 entries, 910 KiB; main JS 201 kB gzip, budget 250 kB) · Playwright 32/32 |
+| 2026-11-25 | Phase 2 e2e journeys | ✅ add suggested skills → set weekly goal → log 3 sessions (today and past days) → Home shows 45/20, 3-day streak, goal reached, skill progress → timed session (seeded running timer) earns +10 XP once → Progress shows totals, consistency 43%, time-by-skill, achievements, history → all survive reload; backup contains sessions/completions/dailySummary/achievements and restores to the same Home numbers; streak-rule switch changes the streak; works offline; light/dark screenshots reviewed |
+| 2026-11-25 | Real iPhone (installed app, Cloudflare URL) | ✅ owner reported it works (no per-item checklist recorded; still to do: IOS_PWA §8 items 8–10 for the timer and the 8-day idle test) |
 | 2026-11-22 | Playwright WebKit | ⬜ not installed (needs `npx playwright install webkit`, a browser download; opt-in with `E2E_WEBKIT=1`) |
 
 **Bug found and fixed by the offline e2e test (M1.1):** the first build activated its service worker but cached nothing, so the app would have failed offline. Cause: `manifest.webmanifest` was listed twice in the Workbox precache (my glob plus the PWA plugin's own entry) with different revisions → `add-to-cache-list-conflicting-entries`, which Workbox throws *after* registration succeeds, so the failure is silent. Fix: drop `webmanifest` from `globPatterns`; inline the Workbox runtime (`inlineWorkboxRuntime`) so errors surface at install instead of inside the AMD loader. Guard: the offline e2e test must stay in `verify:full`.
 
 ### Next steps
-1. M1.5 Dashboard skeleton + final navigation + empty states; deployable `dist`; dry-run on a free host; **first real-iPhone checklist**.
-2. Decide host (DEPLOYMENT.md) so the first real-iPhone check can happen at M1.5.
+1. Commit and push Phase 2 (Cloudflare auto-deploys ~80 s after a push), then run the e2e suite against the live URL (`E2E_BASE_URL`).
+2. Phase 3, in roadmap order: **M3.1 Rubik** (timer, scrambles, Ao5/Ao12, history, charts, algorithms), M3.2 English, M3.3 Java, M3.4 Developer Tools, M3.5 Caro, M3.6 Chess, M3.7 Go. Each module records sessions through `TrainingEngine.recordSession` with its own `moduleId`/`activityType` and supplies its `UserFacts` (vocab learned, Java paths, Rubik PBs) so the three module-bound achievements can unlock.
+3. Real-device checks for the session timer (screen lock, app switch) and the 8-day idle test.
+
+### Phase 2 status (2026-11-25)
+- **Engine** (`core/training`, `features/training`): `recordSession` validates, then in ONE transaction writes session + completion + XP ledger + daily rollup + achievements. Idempotent by activity key (checked in the transaction and enforced by the completions primary key and the ledger unique index); concurrent double-saves award once; a mid-way failure leaves nothing behind. XP rules are data (defaults + `xpRules` overrides, can be disabled). Level = f(total XP), never stored. Streak and analytics are pure functions over the per-day rollup (DST-safe calendar arithmetic). Achievements are rules over persisted facts, with the facts stored as evidence.
+- **Skills**: create/edit/archive/soft-delete, priority, category, one weekly-minutes goal per skill (stored as a `minutes_per_week` goal), suggested set of 7 (added only on request). Validation with Zod; form with React Hook Form.
+- **Sessions**: timer (draft persisted so it survives reload/suspension; elapsed from wall clock; 1 min–12 h bounds) and manual log (any past day, ≤12 h). Both feed time, goals, streak, analytics. **XP only for timed practice ≥5 min** (anti-farming); the completion sheet says plainly why when there is none.
+- **Progress**: 7/30-day bar chart with touch readout, time by skill (donut + legend), consistency, trend vs previous period, achievements with progress, history. In-house SVG charts.
+- **Home**: real today minutes vs goal, streak and level chips, XP bar, rule-based next-up (deterministic, each with a reason), skills with weekly progress, recent activity.
+- **Settings**: streak rule (any session / goal reached), daily goal.
+
+### Known gaps in Phase 2 (intentional)
+- Module-bound achievements (100 words, Java path, Rubik PB) stay locked and say which module they need; their `UserFacts` are 0 until Phase 3.
+- No `dailyGoals` store: the daily goal is the single `dailyGoalMinutes` setting and per-skill goals are weekly minutes. Session-count and per-skill daily goals from the PRD are not built.
+- Sessions cannot be edited or deleted individually yet (needs rollup/XP reversal rules).
+- No XP rule editor UI (rules can be overridden in data only).
+- No edge-swipe-back gesture on pushed screens (a visible back button exists).
+- Donut slice hues are told apart by name in the legend, not by colour alone, but some hues are below 3:1 against white.
+- Main JS is 201 kB gzip against a 250 kB budget: watch it as modules arrive (lazy-load per module).
 
 ### Known gaps in M1.5 (intentional)
 - Home shows only what exists: today's goal ring is 0 by construction (`useDashboardData.todayMinutes` is the single seam the training engine fills in M2.2), no streak/XP/level, empty "Next up", "Your skills" and "Recent activity".

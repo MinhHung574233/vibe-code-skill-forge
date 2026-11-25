@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAgeDays, formatBytes, formatDateTime } from './format';
+import { formatAgeDays, formatBytes, formatClock, formatDateTime, formatDayLabel } from './format';
 
 describe('formatBytes', () => {
   it.each([
@@ -35,5 +35,30 @@ describe('formatDateTime', () => {
     expect(text).toMatch(/22/);
     expect(text).toMatch(/2026/);
     expect(text).toMatch(/14:05|2:05/);
+  });
+});
+
+describe('formatClock', () => {
+  it.each([
+    [0, '00:00'],
+    [7, '00:07'],
+    [307, '05:07'],
+    [3599, '59:59'],
+    [3600, '1:00:00'],
+    [3907, '1:05:07'],
+    [-5, '00:00'],
+    [Number.NaN, '00:00'],
+  ])('%s s -> %s', (seconds, text) => {
+    expect(formatClock(seconds)).toBe(text);
+  });
+});
+
+describe('formatDayLabel', () => {
+  it('uses Today / Yesterday, then a short weekday date', () => {
+    expect(formatDayLabel('2026-11-25', '2026-11-25')).toBe('Today');
+    expect(formatDayLabel('2026-11-24', '2026-11-25')).toBe('Yesterday');
+    const older = formatDayLabel('2026-11-20', '2026-11-25', 'en-GB');
+    expect(older).toMatch(/Fri/);
+    expect(older).toMatch(/20/);
   });
 });

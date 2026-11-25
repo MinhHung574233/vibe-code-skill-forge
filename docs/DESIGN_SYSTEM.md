@@ -111,3 +111,7 @@ Built: tokens, type utilities (`type-*`), `Icon` (28 icons), `Button`, `Card`, `
 Deferred to the milestone that first needs them: `Toast` and `FormField` (M1.4/M2.4), `CodeBlock` and `MarkdownLite` (M3.3), charts (M2.5), swipe actions on `ListRow` (M2.4), edge-swipe-back for pushed screens (first pushed screen, M2.4/M3.1), `Dialog` focus-return and iOS VoiceOver checks (device checklist).
 
 Decisions: the theme preference is stored in localStorage (not IndexedDB) so an inline script can apply it before first paint; it is a per-device convenience and is not part of backups. Badge text always uses the primary text colour with a coloured dot, so status colours never carry text contrast.
+
+## 14. Implementation status (Phase 2, 2026-11-25)
+
+Added: `BarChart` (touch/drag readout, caption under the chart), `DonutChart` (always with a named legend), `FormField` (`TextField`, `TextAreaField`, `SelectField`: 16 px text, 48 px height, `aria-invalid`/`aria-describedby`), `NumberStepper` (44 px targets), `Screen` back button for pushed screens. Deferred: edge-swipe-back, `Toast`.

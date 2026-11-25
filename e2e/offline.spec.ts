@@ -26,8 +26,8 @@ test.describe('offline-first shell', () => {
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible();
 
-    await page.getByRole('link', { name: 'Skills' }).click();
-    await expect(page.getByRole('heading', { name: 'Skills' })).toBeVisible();
+    await page.getByRole('link', { name: 'Skills', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Skills', level: 1 })).toBeVisible();
     await expect(page).toHaveURL(/#\/skills$/);
   });
 
