@@ -118,6 +118,9 @@ ratingHistory:    'id, game, at'
 ### Implementation status (Phase 2, schema v2)
 Built as designed in §3 v2 except: **no `dailyGoals` store** (the daily goal is the `dailyGoalMinutes` setting; skill goals are `skillGoals` rows) and **`dailySummary` has no `goalsMet`** (derived from duration vs goal at read time). New row types in `src/db/rows.ts`; all six new stores are in `MARKER_TABLES` (data-loss detector) and have backup row validation (`ROW_SCHEMAS`); both are enforced by tests. `completions.activityKey` is the primary key and `xpLedger.activityKey` is a unique index. Upgrading v1 → v2 only adds stores, so no data fix-up exists; the pre-migration snapshot still runs.
 
+### Implementation status (Phase 3, schema v3)
+Seven stores were added in v3, all new (no data fix-up; the pre-migration snapshot still runs): `rubikSolves` (id, createdAt, localDate), `algorithmProgress` (algId), `vocabProgress` (wordId, dueAt, state; SM-2 fields), `lessonProgress` (lessonId, pathId; presence = completed), `gameRecords` (id, game, endedAt), `puzzleProgress` (puzzleId, game), `ratings` (key). All are user data: they are in `MARKER_TABLES` and `ROW_SCHEMAS`, enforced by tests. The v1→v2→v3 upgrade path is tested against the real shipped versions (`migrations.test.ts`). Bundled content (words, lessons, tips, algorithms, puzzles) stays in the app code, not in IndexedDB, so a content update never needs a migration.
+
 ## 6. Failure handling
 
 - Open/upgrade failure or missing IndexedDB → boot recovery screen (retry, restore snapshot, import backup, export readable data).

@@ -65,6 +65,14 @@ Chosen conservatively where "latest" has an ecosystem gap (TypeScript). No exper
 
 **D-31 The running timer is a draft computed from the wall clock.** Only start time and ids are stored (`drafts`), so a reload, suspension or crash loses nothing; a locked phone keeps counting as a stopwatch should; the session id is fixed at start so retries are idempotent. Bounds: at least 1 minute to save, more than 12 hours cannot be saved.
 
+**D-32 The cube is simulated, not tabulated.** Stickers are points in 3D and a turn rotates the stickers of chosen layers. One table covers faces, slices, wide turns and rotations; it is verified with known facts (order of the “sexy move” is 6, R carries F’s right column to U, and so on). The same model draws scramble previews and last-layer case pictures and lets tests prove that each bundled algorithm is a real last-layer algorithm. Hand-typed permutation tables were rejected because one wrong entry silently corrupts everything.
+
+**D-33 Spaced repetition is SM-2.** It is simple, well known, deterministic and easy to test. “Again” is not a lapse for a brand-new card; a forgotten card returns after 10 minutes in the same session. A word is “learned” after three successive recalls, not after being seen once, so the 100-word achievement means something.
+
+**D-34 Java and Developer Tools share one lesson engine.** Content is data (paths → lessons → blocks + 3 questions) with validation in tests; the engine owns progress, scoring and XP. XP once per lesson via the idempotent key `lesson:<id>`; retakes update the best score only. The lesson row is written before the engine call so the “path completed” achievement sees it, and removed if recording fails.
+
+**D-35 Modules are lazy chunks mounted with nested routes.** Each module root is mounted at `practice/<id>/*` and declares its own relative routes, so adding a module changes no shared route code beyond one line. Chunks are precached, so modules work offline (tested).
+
 **D-5 Content bundled into lazy chunks, precached.** "Content download" = the install precache; no runtime fetch of content. Validated by Zod in tests. Budget: precache ≤ 15 MB, initial JS ≤ 250 kB gzip.
 
 **D-6 Offline-readiness verification.** Build emits `offline-manifest.json`; the client checks every URL in `caches` and exposes Repair. iOS can evict caches independently of IndexedDB.

@@ -6,7 +6,7 @@ import { Icon } from '@/components/Icon';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ProgressRing } from '@/components/ProgressRing';
 import { Screen } from '@/components/Screen';
-import { Section } from '@/components/Section';
+import { ListRow, Section } from '@/components/Section';
 import { Skeleton } from '@/components/Skeleton';
 import { formatMinutes } from '@/core/training/analytics';
 import {
@@ -14,6 +14,8 @@ import {
   type Recommendation,
   type RecommendationSkill,
 } from '@/core/training/recommend';
+import { toLocalDate } from '@/core/time/localDate';
+import { tipForDate } from '@/features/tools/domain/tips';
 import { useNow } from '@/hooks/useNow';
 import { SessionList } from '@/features/training/ui/SessionList';
 import { useOverview, useRecentSessions, useSkills } from '@/features/training/ui/useTraining';
@@ -40,6 +42,7 @@ function recommendationTarget(r: Recommendation): string {
  */
 export function DashboardScreen() {
   const now = useNow();
+  const dailyTip = tipForDate(toLocalDate(now));
   const trained = useOverview();
   const skills = useSkills();
   const recent = useRecentSessions(5);
@@ -178,6 +181,16 @@ export function DashboardScreen() {
             </Link>
           ))
         )}
+      </Section>
+
+      <Section title="Developer tip of the day">
+        <ListRow
+          title={dailyTip.title}
+          subtitle={dailyTip.text}
+          icon="terminal"
+          iconColor="#14b8a6"
+          to="/practice/tools"
+        />
       </Section>
 
       <Section title="Your skills">

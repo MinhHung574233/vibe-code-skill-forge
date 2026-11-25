@@ -10,7 +10,8 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | Phase 0 – docs rewritten for PWA (PRD, ARCHITECTURE, DATABASE, DESIGN_SYSTEM, TECHNICAL_DECISIONS, ROADMAP + IOS_PWA, DEPLOYMENT) | ✅ drafted 2026-11-22 |
 | Node 22 | ✅ 22.23.5 active |
 | Phase 1 – Foundation | ⏳ M1.1 ✅ · M1.2 ✅ · M1.3 ✅ · M1.4 ✅ · M1.5 ✅ (2026-11-23) · **Phase 1 complete** |
-| Phase 2 – Core training platform | ✅ M2.1–M2.6 done (2026-11-25), **not yet committed/deployed** · Phase 3 (modules) next |
+| Phase 2 – Core training platform | ✅ M2.1–M2.6 done and committed (2026-11-25), **not yet pushed/deployed** |
+| Phase 3 – Modules | ⏳ M3.1 Rubik ✅ · M3.2 English ✅ · M3.3 Java ✅ · M3.4 Developer Tools ✅ (2026-11-25, see "Phase 3 status") |
 | M2.1–M2.6 – engine, streak/goals, achievements, skills, progress, real Home | ✅ 367 unit/integration/UI tests (incl. real v1→v2 upgrade), 32 e2e tests; see "Phase 2 status" below |
 | M1.5 – home, practice hub, headers | ✅ 221 unit tests, 26 e2e tests; CSP + cache headers verified locally and on the live Cloudflare site; see below |
 | M1.4 – settings, PWA layer, backup | ✅ 198 unit/integration tests, 17 e2e tests (stable over 3 parallel runs); see below |
@@ -51,6 +52,7 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | 2026-11-23 | M1.5 e2e (Edge, production headers applied) | ✅ new: security/cache headers; app tour under the CSP with **zero violations and zero console errors**; no inline scripts; Home goal + empty states; Practice lists 7 modules (Coming soon); daily goal persists and shows on Home; every control ≥44px on Home/Practice/Settings; light+dark no overflow (screenshots reviewed) |
 | 2026-11-25 | Phase 2 `npm run verify:full` | ✅ tsc · eslint · vitest 38 files / 367 tests · build (precache 66 entries, 910 KiB; main JS 201 kB gzip, budget 250 kB) · Playwright 32/32 |
 | 2026-11-25 | Phase 2 e2e journeys | ✅ add suggested skills → set weekly goal → log 3 sessions (today and past days) → Home shows 45/20, 3-day streak, goal reached, skill progress → timed session (seeded running timer) earns +10 XP once → Progress shows totals, consistency 43%, time-by-skill, achievements, history → all survive reload; backup contains sessions/completions/dailySummary/achievements and restores to the same Home numbers; streak-rule switch changes the streak; works offline; light/dark screenshots reviewed |
+| 2026-11-25 | M3.1–M3.4 | ✅ unit/UI tests for cube model (6), algorithms (6, simulation-verified), stats and scrambles (12), timer protocol (5), Rubik service (6), Rubik UI (7), English (18), lessons/content/tips (20); e2e `modules.spec.ts` 7/7 including all four modules offline |
 | 2026-11-25 | Real iPhone (installed app, Cloudflare URL) | ✅ owner reported it works (no per-item checklist recorded; still to do: IOS_PWA §8 items 8–10 for the timer and the 8-day idle test) |
 | 2026-11-22 | Playwright WebKit | ⬜ not installed (needs `npx playwright install webkit`, a browser download; opt-in with `E2E_WEBKIT=1`) |
 
@@ -60,6 +62,18 @@ A milestone closes only when `npm run verify` is green, the production build suc
 1. Commit and push Phase 2 (Cloudflare auto-deploys ~80 s after a push), then run the e2e suite against the live URL (`E2E_BASE_URL`).
 2. Phase 3, in roadmap order: **M3.1 Rubik** (timer, scrambles, Ao5/Ao12, history, charts, algorithms), M3.2 English, M3.3 Java, M3.4 Developer Tools, M3.5 Caro, M3.6 Chess, M3.7 Go. Each module records sessions through `TrainingEngine.recordSession` with its own `moduleId`/`activityType` and supplies its `UserFacts` (vocab learned, Java paths, Rubik PBs) so the three module-bound achievements can unlock.
 3. Real-device checks for the session timer (screen lock, app switch) and the 8-day idle test.
+
+### Phase 3 status – content and training modules (2026-11-25)
+Schema v3 adds seven stores (`rubikSolves`, `algorithmProgress`, `vocabProgress`, `lessonProgress`, `gameRecords`, `puzzleProgress`, `ratings`); all are in the data-loss marker and backup validation. Every module records through `TrainingEngine.recordSession` with its own `moduleId`/`activityType`; module activities may be shorter than a minute (practice sessions still need ≥ 1 min). `features/training/data/moduleFacts.ts` feeds the three module-bound achievements from persisted data.
+- **Rubik (M3.1)**: a 54-sticker 3D cube simulator supports every notation used (faces, slices, wide turns, rotations) and draws the scramble preview and the case pictures, so there are no hand-typed permutation tables. Timer uses a pure state machine (hold 0.3 s, release to start, touch to stop; space bar works). Ao5/Ao12/best/mean follow WCA trimming; +2 and DNF; solve history; PB counting; sessions are recorded for XP on "Finish session" or closed automatically after 90 minutes idle. Algorithm library: all 21 PLL + 10 two-look OLL, each **verified by simulation in tests** (first two layers restored; PLL keeps orientation; corner OLLs keep the cross); learning/learned status.
+- **English (M3.2)**: 120 bundled IT words (definition, example, Vietnamese), SM-2 spaced repetition (pure, tested), flashcard sessions with Again/Hard/Good/Easy and next-interval hints, forgotten cards return in the same session, 10 new words/day, browse + search, speech playback via the device voice. "Learned" = recalled 3 times in a row (about 3 weeks), which drives the 100-word achievement.
+- **Java & Spring Boot (M3.3)** and **Developer Tools (M3.4)** share a lesson engine (read → 3-question quiz → pass at 2/3). XP once per lesson (activity key `lesson:<id>`), progress per lesson, path completion drives the Java achievement. Java: 12 lessons in 3 paths. Tools: 10 lessons (Git/GitLab, IntelliJ, DevOps) and 41 tips with a Daily Developer Tip (chosen by calendar day), also shown on Home.
+
+**Known gaps vs the M3 scope table (intentional, not hidden):**
+- Rubik: no per-skill goals or notes, no inspection countdown, no device timer calibration; scrambles are random-move (not WCA random-state); no OLL beyond 2-look.
+- English: 120 words (target was 300+), no quiz mode, favourites, collections or custom words.
+- Java: 3 paths / 12 lessons (target was 5 tracks), no coding challenges, bookmarks or notes. Tools: no bookmarks.
+- Lesson and word content was written for this app and checked for structure and internal consistency by tests; it has not been reviewed by a second person.
 
 ### Phase 2 status (2026-11-25)
 - **Engine** (`core/training`, `features/training`): `recordSession` validates, then in ONE transaction writes session + completion + XP ledger + daily rollup + achievements. Idempotent by activity key (checked in the transaction and enforced by the completions primary key and the ledger unique index); concurrent double-saves award once; a mid-way failure leaves nothing behind. XP rules are data (defaults + `xpRules` overrides, can be disabled). Level = f(total XP), never stored. Streak and analytics are pure functions over the per-day rollup (DST-safe calendar arithmetic). Achievements are rules over persisted facts, with the facts stored as evidence.
