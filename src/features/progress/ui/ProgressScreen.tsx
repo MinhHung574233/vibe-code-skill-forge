@@ -13,6 +13,7 @@ import { ACHIEVEMENTS, EMPTY_FACTS, type UserFacts } from '@/core/training/achie
 import { formatMinutes, type Trend } from '@/core/training/analytics';
 import { toLocalDate } from '@/core/time/localDate';
 import { useNow } from '@/hooks/useNow';
+import { intlLocale, t } from '@/i18n/core';
 import {
   UNASSIGNED_KEY,
   buildProgress,
@@ -28,34 +29,35 @@ import {
 } from '@/features/training/ui/useTraining';
 import { formatDateTime } from '@/utils/format';
 
-const RANGES = [
-  { value: '7', label: '7 days' },
-  { value: '30', label: '30 days' },
-] as const;
+const ranges = () =>
+  [
+    { value: '7', label: t('7 days') },
+    { value: '30', label: t('30 days') },
+  ] as const;
 
 /** Distinct hues for slices; every slice is also named in the legend (never colour alone). */
 const SLICE_COLORS = ['#4f46e5', '#0ea5e9', '#f97316', '#14b8a6', '#8b5cf6', '#22c55e', '#64748b'];
 
-function trendText(t: Trend): string {
-  switch (t.kind) {
+function trendText(value: Trend): string {
+  switch (value.kind) {
     case 'flat':
-      return 'Same as the previous period';
+      return t('Same as the previous period');
     case 'new':
-      return 'Nothing in the previous period';
+      return t('Nothing in the previous period');
     case 'up':
-      return `Up ${t.percent}% on the previous period`;
+      return t('Up {percent}% on the previous period', { percent: value.percent });
     case 'down':
-      return `Down ${t.percent}% on the previous period`;
+      return t('Down {percent}% on the previous period', { percent: value.percent });
   }
 }
 
 const weekdayLetter = (date: string) => {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  return new Intl.DateTimeFormat(undefined, { weekday: 'narrow' }).format(new Date(y, m - 1, d));
+  return new Intl.DateTimeFormat(intlLocale(), { weekday: 'narrow' }).format(new Date(y, m - 1, d));
 };
 const dayTitle = (date: string) => {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(intlLocale(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -89,7 +91,9 @@ export function ProgressScreen() {
   const slices: DonutSlice[] = (view?.bySkill ?? []).map((s, i) => ({
     key: s.key,
     label:
-      s.key === UNASSIGNED_KEY ? 'No specific skill' : (skillNames.get(s.key) ?? 'Deleted skill'),
+      s.key === UNASSIGNED_KEY
+        ? t('No specific skill')
+        : (skillNames.get(s.key) ?? t('Deleted skill')),
     value: s.minutes,
     color: SLICE_COLORS[i % SLICE_COLORS.length] ?? '#64748b',
   }));
@@ -104,10 +108,10 @@ export function ProgressScreen() {
   };
 
   return (
-    <Screen title="Progress">
+    <Screen title={t('Progress')}>
       <SegmentedControl
-        label="Period"
-        options={RANGES}
+        label={t('Period')}
+        options={ranges()}
         value={String(range) as '7' | '30'}
         onChange={(v) => setRange(Number(v) as ProgressRange)}
       />
@@ -116,53 +120,63 @@ export function ProgressScreen() {
         <Card padded={false} className="mt-4">
           <EmptyState
             icon="chart"
-            title="No training recorded yet"
-            description="Finish a session and your time, consistency and trends appear here."
+            title={t('No training recorded yet')}
+            description={t('Finish a session and your time, consistency and trends appear here.')}
           />
         </Card>
       ) : (
         <>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <StatTile
-              label="Time trained"
+              label={t('Time trained')}
               value={formatMinutes(view.stats.totalMinutes)}
               icon="clock"
               hint={trendText(view.minutesTrend)}
             />
-            <StatTile label="Sessions" value={String(view.stats.sessions)} icon="activity" />
+            <StatTile label={t('Sessions')} value={String(view.stats.sessions)} icon="activity" />
             <StatTile
-              label="Active days"
+              label={t('Active days')}
               value={`${view.stats.activeDays}/${view.stats.length}`}
               icon="flame"
               iconColor="var(--warning)"
-              hint={`Consistency ${Math.round(view.stats.consistency * 100)}%`}
+              hint={t('Consistency {percent}%', {
+                percent: Math.round(view.stats.consistency * 100),
+              })}
             />
             <StatTile
-              label="Average / active day"
+              label={t('Average / active day')}
               value={formatMinutes(view.stats.averageMinutesPerActiveDay)}
               icon="target"
             />
           </div>
 
-          <Section title="Daily minutes">
+          <Section title={t('Daily minutes')}>
             <div className="p-4">
               <BarChart
                 data={bars}
                 formatValue={(v) => formatMinutes(v)}
                 labelEvery={range === 7 ? 1 : 5}
-                summary={`${formatMinutes(view.stats.totalMinutes)} over the last ${range} days, trained on ${view.stats.activeDays} of ${view.stats.length} days.`}
+                summary={t(
+                  '{time} over the last {range} days, trained on {active} of {total} days.',
+                  {
+                    time: formatMinutes(view.stats.totalMinutes),
+                    range,
+                    active: view.stats.activeDays,
+                    total: view.stats.length,
+                  },
+                )}
               />
             </div>
           </Section>
 
-          <Section title="Where the time went">
+          <Section title={t('Where the time went')}>
             <div className="p-4">
               {slices.length === 0 ? (
-                <p className="type-subhead text-muted">No sessions in this period.</p>
+                <p className="type-subhead text-muted">{t('No sessions in this period.')}</p>
               ) : (
                 <DonutChart
                   slices={slices}
-                  label="Time by skill"
+                  label={t('Time by skill')}
                   centerLabel={formatMinutes(view.stats.totalMinutes)}
                   formatValue={formatMinutes}
                 />
@@ -173,8 +187,10 @@ export function ProgressScreen() {
       )}
 
       <Section
-        title="Achievements"
-        footer="Achievements unlock from your real activity. Some need modules that are not built yet."
+        title={t('Achievements')}
+        footer={t(
+          'Achievements unlock from your real activity. Some need modules that are not built yet.',
+        )}
       >
         {ACHIEVEMENTS.map((a) => {
           const unlockedAt = unlocked?.get(a.id);
@@ -188,17 +204,22 @@ export function ProgressScreen() {
                 <Icon name={unlockedAt ? 'check' : (a.icon as IconName)} size={20} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="break-words type-body">{a.title}</p>
+                <p className="break-words type-body">{t(a.title)}</p>
                 <p className="type-subhead text-muted">
                   {unlockedAt
-                    ? `Unlocked ${formatDateTime(unlockedAt)}`
+                    ? t('Unlocked {date}', {
+                        date: formatDateTime(unlockedAt, intlLocale()),
+                      })
                     : a.needsModule
-                      ? `Needs the ${a.needsModule} module`
-                      : a.description}
+                      ? t('Needs the {module} module', { module: t(a.needsModule) })
+                      : t(a.description)}
                 </p>
                 {!unlockedAt && !a.needsModule && (
                   <div className="mt-2">
-                    <ProgressBar value={current / target} label={`${a.title} progress`} />
+                    <ProgressBar
+                      value={current / target}
+                      label={t('{title} progress', { title: t(a.title) })}
+                    />
                   </div>
                 )}
               </div>
@@ -207,12 +228,12 @@ export function ProgressScreen() {
         })}
       </Section>
 
-      <Section title="History">
+      <Section title={t('History')}>
         {recent === undefined || recent.length === 0 ? (
           <EmptyState
             icon="clock"
-            title="No history yet"
-            description="Finished sessions are listed here, newest first."
+            title={t('No history yet')}
+            description={t('Finished sessions are listed here, newest first.')}
           />
         ) : (
           <SessionList sessions={recent} skillNames={skillNames} today={today} deletable />

@@ -6,6 +6,7 @@ import { Section } from '@/components/Section';
 import { toLocalDate } from '@/core/time/localDate';
 import { LearningModule, type LearningConfig } from '@/features/learning/ui/LearningModule';
 import { useNow } from '@/hooks/useNow';
+import { t } from '@/i18n/core';
 import { useState } from 'react';
 import { TOOLS_PATHS } from '../domain/content';
 import { TIPS, TIP_LABELS, tipForDate, type Tip, type TipCategory } from '../domain/tips';
@@ -13,10 +14,14 @@ import { TIPS, TIP_LABELS, tipForDate, type Tip, type TipCategory } from '../dom
 function TipBody({ tip }: { tip: Tip }) {
   return (
     <>
-      <p className="type-headline">{tip.title}</p>
-      <p className="mt-1 type-body">{tip.text}</p>
+      <p className="type-headline">{t(tip.title)}</p>
+      <p className="mt-1 type-body">{t(tip.text)}</p>
       {tip.example && (
-        <pre className="mt-2 overflow-x-auto rounded-xl border border-border bg-surface p-3 font-mono text-[13px]">
+        <pre
+          tabIndex={0}
+          aria-label={t('Code example')}
+          className="mt-2 overflow-x-auto rounded-xl border border-border bg-surface p-3 font-mono text-[13px]"
+        >
           <code>{tip.example}</code>
         </pre>
       )}
@@ -33,7 +38,7 @@ export function DailyTipCard() {
         id="daily-tip-heading"
         className="type-footnote font-medium uppercase tracking-wide text-muted"
       >
-        Daily developer tip · {TIP_LABELS[tip.category]}
+        {t('Daily developer tip · {category}', { category: t(TIP_LABELS[tip.category]) })}
       </p>
       <div className="mt-2">
         <TipBody tip={tip} />
@@ -42,7 +47,7 @@ export function DailyTipCard() {
         to="tips"
         className="mt-3 inline-flex min-h-[44px] items-center type-callout text-accent"
       >
-        Browse all {TIPS.length} tips
+        {t('Browse all {n} tips', { n: TIPS.length })}
       </Link>
     </Card>
   );
@@ -52,12 +57,12 @@ const CATEGORIES = Object.keys(TIP_LABELS) as TipCategory[];
 
 function TipsScreen() {
   const [category, setCategory] = useState<TipCategory | null>(null);
-  const list = category ? TIPS.filter((t) => t.category === category) : TIPS;
+  const list = category ? TIPS.filter((x) => x.category === category) : TIPS;
   return (
-    <Screen title="Tips" back={{ to: '/practice/tools', label: 'Developer Tools' }}>
+    <Screen title={t('Tips')} back={{ to: '/practice/tools', label: t('Developer Tools') }}>
       <div className="flex flex-wrap gap-2">
         <Chip selected={category === null} onClick={() => setCategory(null)}>
-          All
+          {t('All')}
         </Chip>
         {CATEGORIES.map((c) => (
           <Chip
@@ -65,11 +70,11 @@ function TipsScreen() {
             selected={category === c}
             onClick={() => setCategory(category === c ? null : c)}
           >
-            {TIP_LABELS[c]}
+            {t(TIP_LABELS[c])}
           </Chip>
         ))}
       </div>
-      <Section footer={`${list.length} tips`}>
+      <Section footer={t('{n} tips', { n: list.length })}>
         {list.map((tip) => (
           <div key={tip.id} className="px-4 py-3">
             <TipBody tip={tip} />

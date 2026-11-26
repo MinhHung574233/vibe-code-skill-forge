@@ -4,6 +4,7 @@ import { Button } from '@/components/Button';
 import { SelectField, TextAreaField, TextField } from '@/components/FormField';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Sheet } from '@/components/Sheet';
+import { t } from '@/i18n/core';
 import { useSkillRepository } from '@/features/training/ui/useTraining';
 import {
   CATEGORY_LABELS,
@@ -51,7 +52,7 @@ const resolver: Resolver<FormValues> = (values) => {
   if (typeof input.weeklyGoalMinutes === 'string') {
     return {
       values: {},
-      errors: { weeklyGoal: { type: 'validate', message: 'Enter a whole number of minutes.' } },
+      errors: { weeklyGoal: { type: 'validate', message: t('Enter a whole number of minutes.') } },
     };
   }
   const parsed = SkillInputSchema.safeParse(input);
@@ -59,7 +60,7 @@ const resolver: Resolver<FormValues> = (values) => {
   const errors: Record<string, { type: string; message: string }> = {};
   for (const issue of parsed.error.issues) {
     const field = FIELD_FOR_PATH[String(issue.path[0])];
-    if (field && !errors[field]) errors[field] = { type: 'validate', message: issue.message };
+    if (field && !errors[field]) errors[field] = { type: 'validate', message: t(issue.message) };
   }
   return { values: {}, errors };
 };
@@ -72,14 +73,15 @@ interface SkillFormSheetProps {
   onSaved?: (skill: Skill) => void;
 }
 
-const PRIORITY_OPTIONS = ([1, 2, 3] as const).map((p) => ({
-  value: String(p) as '1' | '2' | '3',
-  label: PRIORITY_LABELS[p],
-}));
+const priorityOptions = () =>
+  ([1, 2, 3] as const).map((p) => ({
+    value: String(p) as '1' | '2' | '3',
+    label: t(PRIORITY_LABELS[p]),
+  }));
 
 export function SkillFormSheet({ open, onClose, skill, onSaved }: SkillFormSheetProps) {
   return (
-    <Sheet open={open} onClose={onClose} title={skill ? 'Edit skill' : 'New skill'}>
+    <Sheet open={open} onClose={onClose} title={skill ? t('Edit skill') : t('New skill')}>
       {/* Mounted only while open so every opening starts from the right values. */}
       {open && <SkillForm skill={skill} onClose={onClose} onSaved={onSaved} />}
     </Sheet>
@@ -133,39 +135,39 @@ function SkillForm({
   return (
     <form onSubmit={(e) => void onSubmit(e)} noValidate className="space-y-4">
       <TextField
-        label="Name"
+        label={t('Name')}
         autoComplete="off"
         autoCapitalize="sentences"
         maxLength={80}
         error={errors.name?.message}
         {...register('name')}
       />
-      <SelectField label="Category" error={errors.category?.message} {...register('category')}>
+      <SelectField label={t('Category')} error={errors.category?.message} {...register('category')}>
         {SKILL_CATEGORIES.map((c) => (
           <option key={c} value={c}>
-            {CATEGORY_LABELS[c]}
+            {t(CATEGORY_LABELS[c])}
           </option>
         ))}
       </SelectField>
       <div className="space-y-1.5">
-        <span className="block px-1 type-subhead font-medium">Priority</span>
+        <span className="block px-1 type-subhead font-medium">{t('Priority')}</span>
         <SegmentedControl
-          label="Priority"
-          options={PRIORITY_OPTIONS}
+          label={t('Priority')}
+          options={priorityOptions()}
           value={priority}
           onChange={(value) => setValue('priority', value)}
         />
       </div>
       <TextField
-        label="Weekly goal (minutes)"
-        hint="Optional. Progress shows against it on Home and the skill page."
+        label={t('Weekly goal (minutes)')}
+        hint={t('Optional. Progress shows against it on Home and the skill page.')}
         inputMode="numeric"
-        placeholder="e.g. 120"
+        placeholder={t('e.g. 120')}
         error={errors.weeklyGoal?.message}
         {...register('weeklyGoal')}
       />
       <TextAreaField
-        label="Notes"
+        label={t('Notes')}
         maxLength={300}
         error={errors.description?.message}
         {...register('description')}
@@ -176,10 +178,10 @@ function SkillForm({
         </p>
       )}
       <Button type="submit" fullWidth loading={isSubmitting}>
-        {skill ? 'Save changes' : 'Add skill'}
+        {skill ? t('Save changes') : t('Add skill')}
       </Button>
       <Button type="button" variant="ghost" fullWidth onClick={onClose}>
-        Cancel
+        {t('Cancel')}
       </Button>
     </form>
   );

@@ -7,7 +7,13 @@ import { SettingsScreen } from '@/features/settings/ui/SettingsScreen';
 import { SkillDetailScreen } from '@/features/skills/ui/SkillDetailScreen';
 import { SkillsScreen } from '@/features/skills/ui/SkillsScreen';
 import { SessionScreen } from '@/features/training/ui/SessionScreen';
+import { t } from '@/i18n/core';
 import { TabLayout } from './TabLayout';
+
+/** A component (not a constant element) so the title is translated at render time. */
+function NotFoundScreen() {
+  return <ShellScreen title={t('Not found')} milestone="n/a" />;
+}
 
 /**
  * Route table. Module routes will be added as lazy chunks (all precached by the service
@@ -81,7 +87,7 @@ export const routes: RouteObject[] = [
           return { Component: ComponentGallery };
         },
       },
-      { path: '*', element: <ShellScreen title="Not found" milestone="n/a" /> },
+      { path: '*', element: <NotFoundScreen /> },
     ],
   },
 ];

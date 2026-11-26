@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
 import {
   IDLE,
@@ -99,34 +100,23 @@ export function TimerPad({ onFinish, lastMs, inspection }: TimerPadProps) {
   const hint =
     state.phase === 'idle'
       ? inspection
-        ? 'Touch to start the 15 second inspection'
-        : 'Touch and hold, then let go to start'
+        ? t('Touch to start the 15 second inspection')
+        : t('Touch and hold, then let go to start')
       : state.phase === 'inspecting'
-        ? 'Inspecting. Touch and hold, then let go to start'
+        ? t('Inspecting. Touch and hold, then let go to start')
         : state.phase === 'holding'
-          ? 'Keep holding…'
+          ? t('Keep holding…')
           : state.phase === 'ready'
-            ? 'Let go to start'
-            : 'Touch to stop';
+            ? t('Let go to start')
+            : t('Touch to stop');
 
+  // The readout and the touch surface are separate on purpose: a button whose accessible name
+  // differs from its visible text fails WCAG "label in name", and the time changes every frame.
+  // The empty button covers the whole card and carries the gestures and the spoken name.
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Cube timer. ${hint}.`}
-      onPointerDown={(event) => {
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-        send({ type: 'press', at: performance.now() });
-      }}
-      onPointerUp={() => send({ type: 'release', at: performance.now() })}
-      onPointerCancel={() => send({ type: 'cancel' })}
-      onKeyDown={onKeyDown}
-      onKeyUp={onKeyUp}
-      onBlur={() => stateRef.current.phase !== 'running' && send({ type: 'cancel' })}
-      onContextMenu={(event) => event.preventDefault()}
       className={cn(
-        'flex min-h-56 touch-none select-none flex-col items-center justify-center rounded-3xl border-2 outline-none transition-colors',
-        'focus-visible:ring-2 focus-visible:ring-accent',
+        'relative flex min-h-56 flex-col items-center justify-center rounded-3xl border-2 transition-colors',
         'bg-surface',
         state.phase === 'idle' && 'border-border',
         state.phase === 'inspecting' && 'border-warning',
@@ -137,7 +127,7 @@ export function TimerPad({ onFinish, lastMs, inspection }: TimerPadProps) {
     >
       <span
         role="timer"
-        aria-label="Solve time"
+        aria-label={t('Solve time')}
         className={cn(
           'font-mono text-6xl font-semibold tabular-nums tracking-tight',
           state.phase === 'holding' && 'text-danger',
@@ -149,6 +139,22 @@ export function TimerPad({ onFinish, lastMs, inspection }: TimerPadProps) {
       <span className="mt-3 type-subhead text-muted" aria-live="polite">
         {hint}
       </span>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={t('Cube timer {time}. {hint}.', { time: text, hint })}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+          send({ type: 'press', at: performance.now() });
+        }}
+        onPointerUp={() => send({ type: 'release', at: performance.now() })}
+        onPointerCancel={() => send({ type: 'cancel' })}
+        onKeyDown={onKeyDown}
+        onKeyUp={onKeyUp}
+        onBlur={() => stateRef.current.phase !== 'running' && send({ type: 'cancel' })}
+        onContextMenu={(event) => event.preventDefault()}
+        className="absolute inset-0 touch-none select-none rounded-3xl outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      />
     </div>
   );
 }

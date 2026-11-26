@@ -1,3 +1,5 @@
+import { t } from '@/i18n/core';
+
 /**
  * Delivering a backup file on iPhone (IOS_PWA §6). Three paths, tried by the UI in this order:
  *  1. Web Share with a file -> "Save to Files", AirDrop, etc. Must be called directly from a tap,
@@ -66,6 +68,7 @@ export async function copyText(text: string): Promise<DeliveryResult> {
 export const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
 
 export async function readFileText(file: File): Promise<string> {
-  if (file.size > MAX_BACKUP_BYTES) throw new RangeError('That file is too large to be a backup.');
+  if (file.size > MAX_BACKUP_BYTES)
+    throw new RangeError(t('That file is too large to be a backup.'));
   return file.text();
 }

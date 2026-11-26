@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import type { Word } from './vocabulary';
 
 /**
@@ -76,11 +77,11 @@ export function review(card: CardState, grade: Grade, now: number): CardState {
 /** Short label for a button, e.g. "10 min", "1 day", "2 wk". */
 export function describeInterval(card: CardState, grade: Grade, now: number): string {
   const next = review(card, grade, now);
-  if (next.intervalDays === 0) return `${Math.round(RELEARN_DELAY_MS / 60_000)} min`;
+  if (next.intervalDays === 0) return t('{n} min', { n: Math.round(RELEARN_DELAY_MS / 60_000) });
   if (next.intervalDays < 14)
-    return next.intervalDays === 1 ? '1 day' : `${next.intervalDays} days`;
-  if (next.intervalDays < 60) return `${Math.round(next.intervalDays / 7)} wk`;
-  return `${Math.round(next.intervalDays / 30)} mo`;
+    return next.intervalDays === 1 ? t('1 day') : t('{n} days', { n: next.intervalDays });
+  if (next.intervalDays < 60) return t('{n} wk', { n: Math.round(next.intervalDays / 7) });
+  return t('{n} mo', { n: Math.round(next.intervalDays / 30) });
 }
 
 /**

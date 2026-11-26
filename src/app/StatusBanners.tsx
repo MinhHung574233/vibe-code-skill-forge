@@ -10,6 +10,7 @@ import {
   useUserDataRowCount,
 } from '@/features/settings/ui/useSettings';
 import { useNow } from '@/hooks/useNow';
+import { t } from '@/i18n/core';
 import { detectIos, isStandalone, shouldOfferInstall } from '@/pwa/install';
 import { usePwaStore } from '@/pwa/pwaStore';
 
@@ -63,7 +64,7 @@ export function StatusBanners() {
     banner = {
       key: 'update',
       icon: 'refresh',
-      text: 'An update is ready.',
+      text: t('An update is ready.'),
       action: (
         <Button
           size="sm"
@@ -73,7 +74,7 @@ export function StatusBanners() {
             void applyUpdate();
           }}
         >
-          Restart
+          {t('Restart')}
         </Button>
       ),
     };
@@ -81,10 +82,10 @@ export function StatusBanners() {
     banner = {
       key: 'offline',
       icon: 'alert',
-      text: 'Some offline files are missing. Connect to the internet to repair.',
+      text: t('Some offline files are missing. Connect to the internet to repair.'),
       action: (
         <Button size="sm" variant="secondary" onClick={() => void repairReadiness()}>
-          Repair
+          {t('Repair')}
         </Button>
       ),
     };
@@ -98,7 +99,7 @@ export function StatusBanners() {
           to="/settings"
           className="inline-flex min-h-[44px] items-center rounded-xl bg-accent-soft px-4 type-headline text-accent"
         >
-          Back up
+          {t('Back up')}
         </Link>
       ),
     };
@@ -106,10 +107,10 @@ export function StatusBanners() {
     banner = {
       key: 'install',
       icon: 'plus',
-      text: 'Add SkillForge to your Home Screen to use it offline.',
+      text: t('Add SkillForge to your Home Screen to use it offline.'),
       action: (
         <Button size="sm" variant="secondary" onClick={() => setCoachOpen(true)}>
-          How
+          {t('How')}
         </Button>
       ),
     };

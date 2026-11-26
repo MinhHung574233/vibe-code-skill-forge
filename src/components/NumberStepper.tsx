@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import { Icon } from './Icon';
 
 interface NumberStepperProps {
@@ -30,7 +31,7 @@ export function NumberStepper({
     <div role="group" aria-label={label} className="flex items-center gap-2">
       <button
         type="button"
-        aria-label={`Decrease ${label}`}
+        aria-label={t('Decrease {label}', { label })}
         disabled={value <= min}
         className={BUTTON}
         onClick={() => onChange(clamp(value - step))}
@@ -42,7 +43,7 @@ export function NumberStepper({
       </span>
       <button
         type="button"
-        aria-label={`Increase ${label}`}
+        aria-label={t('Increase {label}', { label })}
         disabled={value >= max}
         className={BUTTON}
         onClick={() => onChange(clamp(value + step))}

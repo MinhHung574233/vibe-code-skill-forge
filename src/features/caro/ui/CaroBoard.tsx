@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
+import { t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
 import type { BoardSize, Stone } from '../domain/board';
 
@@ -71,8 +72,9 @@ function describeCell(
 ): string {
   const row = Math.floor(index / size) + 1;
   const col = (index % size) + 1;
-  const who = stone === 0 ? 'empty' : stone === humanStone ? 'your stone' : 'computer stone';
-  return [`Row ${row}, column ${col}, ${who}`, ...extra].join(', ');
+  const who =
+    stone === 0 ? t('empty') : stone === humanStone ? t('your stone') : t('computer stone');
+  return [t('Row {row}, column {col}, {who}', { row, col, who }), ...extra].join(', ');
 }
 
 /**
@@ -215,7 +217,7 @@ export function CaroBoard({
 
       <div
         role="grid"
-        aria-label={`Caro board, ${size} by ${size}`}
+        aria-label={t('Caro board, {size} by {size}', { size })}
         aria-rowcount={size}
         aria-colcount={size}
         className="absolute inset-0 grid"
@@ -229,9 +231,9 @@ export function CaroBoard({
             {Array.from({ length: size }, (_, col) => {
               const index = row * size + col;
               const extra: string[] = [];
-              if (index === lastMove) extra.push('last move');
-              if (onWinLine.has(index)) extra.push('winning line');
-              if (index === preview) extra.push('selected');
+              if (index === lastMove) extra.push(t('last move'));
+              if (onWinLine.has(index)) extra.push(t('winning line'));
+              if (index === preview) extra.push(t('selected'));
               return (
                 <div key={col} role="gridcell" className="relative">
                   <button

@@ -7,6 +7,7 @@ import { Screen } from '@/components/Screen';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Skeleton } from '@/components/Skeleton';
 import { newId } from '@/core/ids';
+import { t } from '@/i18n/core';
 import { toLocalDate } from '@/core/time/localDate';
 import { getDb } from '@/db/boot';
 import type { CompletionOutcome } from '@/features/training/domain/session';
@@ -43,6 +44,7 @@ import { createEngineClient, type EngineClient } from '../workers/engineClient';
 import { ChessBoard } from './ChessBoard';
 import { PromotionSheet } from './PromotionSheet';
 import { PieceGlyph } from './pieces';
+import { reasonText, sideName } from './labels';
 import { CHESS_BASE, LEVEL_LABEL } from './useChess';
 
 const LEVEL_OPTIONS = [
@@ -86,6 +88,10 @@ const RESULT_TEXT: Record<Outcome, string> = {
   draw: 'Draw',
 };
 
+function signed(n: number): string {
+  return `${n >= 0 ? '+' : ''}${n}`;
+}
+
 export function PlayScreen() {
   const [phase, setPhase] = useState<'loading' | 'setup' | 'playing'>('loading');
   const [draft, setDraft] = useState<GameDraft | null>(null);
@@ -122,15 +128,13 @@ export function PlayScreen() {
   };
 
   return (
-    <Screen title="Play" back={{ to: CHESS_BASE, label: 'Chess' }}>
+    <Screen title={t('Play')} back={{ to: CHESS_BASE, label: t('Chess') }}>
       {phase === 'loading' && (
         <div className="space-y-3" aria-busy="true">
           <Skeleton className="h-40 w-full rounded-2xl" />
         </div>
       )}
-      {phase === 'setup' && (
-        <Setup draft={draft} onResume={resume} onStart={start} />
-      )}
+      {phase === 'setup' && <Setup draft={draft} onResume={resume} onStart={start} />}
       {phase === 'playing' && game && (
         <GameView
           key={game.id}
@@ -169,53 +173,58 @@ function Setup({
       {draft && (
         <Card role="region" aria-labelledby="resume-title">
           <h2 id="resume-title" className="type-headline">
-            Game in progress
+            {t('Game in progress')}
           </h2>
           <p className="mt-1 type-subhead text-muted">
-            {LEVEL_LABEL[draft.level]} engine, you play {draft.color === 'w' ? 'White' : 'Black'},{' '}
-            {draft.moves.length} moves played.
+            {t('{level} engine, you play {color}, {n} moves played.', {
+              level: t(LEVEL_LABEL[draft.level]),
+              color: sideName(draft.color),
+              n: draft.moves.length,
+            })}
           </p>
           <Button className="mt-3" fullWidth onClick={() => onResume(draft)}>
-            Resume game
+            {t('Resume game')}
           </Button>
         </Card>
       )}
       <Card>
-        <h2 className="type-headline">New game</h2>
+        <h2 className="type-headline">{t('New game')}</h2>
         <div className="mt-3 space-y-4">
           <div>
-            <p className="mb-2 type-subhead text-muted">Engine level</p>
+            <p className="mb-2 type-subhead text-muted">{t('Engine level')}</p>
             <SegmentedControl
-              label="Engine level"
-              options={LEVEL_OPTIONS}
+              label={t('Engine level')}
+              options={LEVEL_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
               value={level}
               onChange={setLevel}
             />
-            <p className="mt-2 type-footnote text-muted">{LEVEL_BLURB[level]}</p>
+            <p className="mt-2 type-footnote text-muted">{t(LEVEL_BLURB[level])}</p>
           </div>
           <div>
-            <p className="mb-2 type-subhead text-muted">You play</p>
+            <p className="mb-2 type-subhead text-muted">{t('You play')}</p>
             <SegmentedControl
-              label="Your colour"
-              options={COLOR_OPTIONS}
+              label={t('Your colour')}
+              options={COLOR_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
               value={color}
               onChange={setColor}
             />
           </div>
           <Button fullWidth onClick={begin}>
-            Start game
+            {t('Start game')}
           </Button>
         </div>
       </Card>
       <p className="type-footnote text-muted">
-        The engine runs on this device, so it works offline. Finished games with at least{' '}
-        {MIN_RATED_PLAYER_MOVES} of your moves change your play rating and earn XP.
+        {t(
+          'The engine runs on this device, so it works offline. Finished games with at least {n} of your moves change your play rating and earn XP.',
+          { n: MIN_RATED_PLAYER_MOVES },
+        )}
       </p>
       <ConfirmDialog
         open={confirmDiscard}
-        title="Replace the game in progress?"
-        message="Starting a new game discards the unfinished one. It will not be rated."
-        confirmLabel="Start new game"
+        title={t('Replace the game in progress?')}
+        message={t('Starting a new game discards the unfinished one. It will not be rated.')}
+        confirmLabel={t('Start new game')}
         destructive
         onConfirm={() => {
           setConfirmDiscard(false);
@@ -337,7 +346,7 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
         if (recorded.ok && !recorded.value.duplicate) setOutcome(recorded.value);
       } catch {
         finishing.current = false;
-        setError('The game could not be saved. Check storage space in Settings and try again.');
+        setError(t('The game could not be saved. Check storage space in Settings and try again.'));
       } finally {
         setSaving(false);
       }
@@ -379,7 +388,7 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
         commit([...moves, r.move]);
       })
       .catch(() => {
-        if (!cancelled) setError('The engine stopped unexpectedly. Resign or start a new game.');
+        if (!cancelled) setError(t('The engine stopped unexpectedly. Resign or start a new game.'));
       });
     return () => {
       cancelled = true;
@@ -422,13 +431,18 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
   const myLead = color === 'w' ? lead : -lead;
   const canUndo = !over && !thinking && movesAfterUndo(moves, color) !== null;
 
-  let status = humansTurn ? 'Your move' : 'Engine is thinking…';
-  if (!over && chess.inCheck()) status = humansTurn ? 'Check. Your move' : 'Check. Engine to move';
+  let status = humansTurn ? t('Your move') : t('Engine is thinking…');
+  if (!over && chess.inCheck()) {
+    status = humansTurn ? t('Check. Your move') : t('Check. Engine to move');
+  }
 
   const pairs: { n: number; white: string; black?: string }[] = [];
   const sans = history.map((m) => m.san);
   for (let i = 0; i < sans.length; i += 2) {
-    const entry: { n: number; white: string; black?: string } = { n: i / 2 + 1, white: sans[i] ?? '' };
+    const entry: { n: number; white: string; black?: string } = {
+      n: i / 2 + 1,
+      white: sans[i] ?? '',
+    };
     const black = sans[i + 1];
     if (black) entry.black = black;
     pairs.push(entry);
@@ -438,9 +452,14 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
     <div className="space-y-3">
       <div className="flex items-center justify-between type-subhead text-muted">
         <span>
-          {LEVEL_LABEL[level]} engine · you play {color === 'w' ? 'White' : 'Black'}
+          {t('{level} engine · you play {color}', {
+            level: t(LEVEL_LABEL[level]),
+            color: sideName(color),
+          })}
         </span>
-        <span aria-label="Material">{myLead > 0 ? `+${myLead}` : myLead < 0 ? `${myLead}` : 'Even'}</span>
+        <span aria-label={t('Material')}>
+          {myLead > 0 ? `+${myLead}` : myLead < 0 ? `${myLead}` : t('Even')}
+        </span>
       </div>
 
       <CapturedRow pieces={theirs} color={color === 'w' ? 'b' : 'w'} />
@@ -452,7 +471,7 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
         onMove={onBoardMove}
         lastMove={lastMove ? { from: lastMove.from, to: lastMove.to } : null}
         checkSquare={checkedKingSquare(chess)}
-        label="Game board"
+        label={t('Game board')}
       />
       <CapturedRow pieces={mine} color={color} />
 
@@ -468,28 +487,31 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
       {result && (
         <Card role="region" aria-labelledby="result-title">
           <h2 id="result-title" className="type-title-2">
-            {RESULT_TEXT[result.outcome]}
+            {t(RESULT_TEXT[result.outcome])}
           </h2>
-          <p className="mt-1 type-subhead text-muted">
-            {result.reason === 'resignation' ? 'by resignation' : `by ${result.reason}`}.
-          </p>
+          <p className="mt-1 type-subhead text-muted">{reasonText(result.reason)}.</p>
           <p className="mt-2 type-body">
             {result.rating
-              ? `Play rating ${result.rating.value} (${result.rating.delta >= 0 ? '+' : ''}${result.rating.delta})`
-              : `Not rated: games need at least ${MIN_RATED_PLAYER_MOVES} of your moves.`}
+              ? t('Play rating {value} ({delta})', {
+                  value: result.rating.value,
+                  delta: signed(result.rating.delta),
+                })
+              : t('Not rated: games need at least {n} of your moves.', {
+                  n: MIN_RATED_PLAYER_MOVES,
+                })}
           </p>
           <Button className="mt-3" fullWidth onClick={onNewGame}>
-            New game
+            {t('New game')}
           </Button>
         </Card>
       )}
 
       <ol
         ref={moveListRef}
-        aria-label="Moves"
+        aria-label={t('Moves')}
         className="flex gap-3 overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-surface px-3 py-2 type-subhead tabular-nums"
       >
-        {pairs.length === 0 && <li className="text-muted">No moves yet</li>}
+        {pairs.length === 0 && <li className="text-muted">{t('No moves yet')}</li>}
         {pairs.map((p) => (
           <li key={p.n}>
             <span className="text-muted">{p.n}.</span> {p.white}
@@ -501,10 +523,10 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
       {!over && (
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" disabled={!canUndo} onClick={undo}>
-            Undo
+            {t('Undo')}
           </Button>
           <Button variant="ghost" onClick={() => setConfirmResign(true)}>
-            Resign
+            {t('Resign')}
           </Button>
         </div>
       )}
@@ -517,9 +539,9 @@ function GameView({ initial, onNewGame }: { initial: ActiveGame; onNewGame: () =
       />
       <ConfirmDialog
         open={confirmResign}
-        title="Resign this game?"
-        message="It counts as a loss."
-        confirmLabel="Resign"
+        title={t('Resign this game?')}
+        message={t('It counts as a loss.')}
+        confirmLabel={t('Resign')}
         destructive
         onConfirm={resign}
         onCancel={() => setConfirmResign(false)}

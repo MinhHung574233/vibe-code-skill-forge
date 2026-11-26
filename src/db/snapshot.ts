@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { AppError } from '@/core/errors';
+import { t } from '@/i18n/core';
 import { SkillForgeDB, type SchemaVersion } from './schema';
 
 /**
@@ -92,7 +93,7 @@ export async function restoreSnapshot(args: {
 }): Promise<SnapshotRecord> {
   const { dbName, versions, snapshotName = SNAPSHOT_DB_NAME } = args;
   const snapshot = await readSnapshot(snapshotName);
-  if (!snapshot) throw new AppError('IO', 'There is no snapshot to restore.');
+  if (!snapshot) throw new AppError('IO', t('There is no snapshot to restore.'));
 
   await Dexie.delete(dbName);
   const restored = new SkillForgeDB(dbName, versions, { upTo: snapshot.fromVersion });

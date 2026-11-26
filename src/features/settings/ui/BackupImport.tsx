@@ -9,6 +9,7 @@ import {
   type BackupFile,
   type BackupSummary,
 } from '@/db/backup';
+import { t } from '@/i18n/core';
 import { readFileText } from '@/services/backupFile';
 import { formatDateTime } from '@/utils/format';
 
@@ -36,11 +37,7 @@ type Stage =
  * confirmation -> replace. Nothing is touched until the user confirms, and a failed import
  * rolls back to the previous data (see db/backup.ts).
  */
-export function BackupImport({
-  onImported,
-  variant = 'secondary',
-  label = 'Restore from backup file',
-}: BackupImportProps) {
+export function BackupImport({ onImported, variant = 'secondary', label }: BackupImportProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>({ kind: 'idle' });
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +56,7 @@ export function BackupImport({
       }
       setStage({ kind: 'preview', file: parsed.value, summary: summarize(parsed.value) });
     } catch (cause) {
-      setError(cause instanceof RangeError ? cause.message : 'That file could not be read.');
+      setError(cause instanceof RangeError ? cause.message : t('That file could not be read.'));
       setStage({ kind: 'idle' });
     }
   };
@@ -93,7 +90,7 @@ export function BackupImport({
         }}
       />
       <Button variant={variant} loading={busy} onClick={() => inputRef.current?.click()}>
-        {stage.kind === 'importing' ? 'Restoring…' : label}
+        {stage.kind === 'importing' ? t('Restoring…') : (label ?? t('Restore from backup file'))}
       </Button>
       {error && (
         <p role="alert" className="mt-2 type-subhead text-danger">
@@ -104,28 +101,31 @@ export function BackupImport({
       <Sheet
         open={preview !== null}
         onClose={() => setStage({ kind: 'idle' })}
-        title="Restore this backup?"
+        title={t('Restore this backup?')}
       >
         {preview && (
           <div>
             <p className="type-subhead text-muted">
-              Made {formatDateTime(preview.summary.exportedAt)}
-              {preview.summary.appVersion ? ` · app ${preview.summary.appVersion}` : ''}
+              {t('Made {date}', { date: formatDateTime(preview.summary.exportedAt) })}
+              {preview.summary.appVersion
+                ? ` · ${t('app {version}', { version: preview.summary.appVersion })}`
+                : ''}
             </p>
             <ul className="my-3 divide-y divide-border rounded-xl border border-border">
               {Object.entries(preview.summary.counts).map(([table, count]) => (
                 <li key={table} className="flex justify-between px-3 py-2 type-body">
-                  <span>{TABLE_LABELS[table] ?? table}</span>
+                  <span>{TABLE_LABELS[table] ? t(TABLE_LABELS[table]) : table}</span>
                   <span className="tabular-nums text-muted">{count}</span>
                 </li>
               ))}
             </ul>
             <p className="mb-4 type-subhead text-muted">
-              Restoring replaces everything currently on this device. A safety copy of your current
-              data is kept first.
+              {t(
+                'Restoring replaces everything currently on this device. A safety copy of your current data is kept first.',
+              )}
             </p>
             <Button fullWidth variant="destructive" onClick={() => setConfirming(true)}>
-              Replace my data
+              {t('Replace my data')}
             </Button>
             <Button
               fullWidth
@@ -133,7 +133,7 @@ export function BackupImport({
               className="mt-2"
               onClick={() => setStage({ kind: 'idle' })}
             >
-              Cancel
+              {t('Cancel')}
             </Button>
           </div>
         )}
@@ -141,9 +141,11 @@ export function BackupImport({
 
       <ConfirmDialog
         open={confirming && preview !== null}
-        title="Replace all data on this device?"
-        message="Your current data will be replaced by this backup. This cannot be undone from the app."
-        confirmLabel="Replace"
+        title={t('Replace all data on this device?')}
+        message={t(
+          'Your current data will be replaced by this backup. This cannot be undone from the app.',
+        )}
+        confirmLabel={t('Replace')}
         destructive
         onCancel={() => setConfirming(false)}
         onConfirm={() => {

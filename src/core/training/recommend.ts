@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import type { StreakState } from './streak';
 
 /**
@@ -52,8 +53,8 @@ export function recommend(input: RecommendationInput): Recommendation[] {
     return [
       {
         kind: 'create_skill',
-        title: 'Add your first skill',
-        reason: 'Skills let you see progress for what you practise.',
+        title: t('Add your first skill'),
+        reason: t('Skills let you see progress for what you practise.'),
       },
     ];
   }
@@ -63,8 +64,8 @@ export function recommend(input: RecommendationInput): Recommendation[] {
   if (streak.atRisk && next) {
     out.push({
       kind: 'protect_streak',
-      title: `Keep your ${streak.current}-day streak`,
-      reason: 'You have not trained today. A session keeps the streak alive.',
+      title: t('Keep your {n}-day streak', { n: streak.current }),
+      reason: t('You have not trained today. A session keeps the streak alive.'),
       skillId: next.id,
     });
   }
@@ -73,11 +74,13 @@ export function recommend(input: RecommendationInput): Recommendation[] {
   if (remaining > 0 && next) {
     out.push({
       kind: 'reach_goal',
-      title: `${remaining} min to today’s goal`,
+      title: t('{minutes} min to today’s goal', { minutes: remaining }),
       reason:
         next.lastSessionAt === null
-          ? `${next.name} has not been trained yet.`
-          : `${next.name} is your top-priority skill, trained least recently.`,
+          ? t('{name} has not been trained yet.', { name: next.name })
+          : t('{name} is your top-priority skill, trained least recently.', {
+              name: next.name,
+            }),
       skillId: next.id,
     });
   }
@@ -94,8 +97,11 @@ export function recommend(input: RecommendationInput): Recommendation[] {
     const left = Math.ceil(behind.weeklyGoalMinutes - behind.minutesThisWeek);
     out.push({
       kind: 'skill_behind',
-      title: `${behind.name}: ${left} min left this week`,
-      reason: `Weekly goal ${behind.weeklyGoalMinutes} min, ${Math.floor(behind.minutesThisWeek)} done.`,
+      title: t('{name}: {left} min left this week', { name: behind.name, left }),
+      reason: t('Weekly goal {goal} min, {done} done.', {
+        goal: behind.weeklyGoalMinutes,
+        done: Math.floor(behind.minutesThisWeek),
+      }),
       skillId: behind.id,
     });
   }

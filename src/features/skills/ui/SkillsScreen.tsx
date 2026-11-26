@@ -10,8 +10,9 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { Screen } from '@/components/Screen';
 import { Skeleton } from '@/components/Skeleton';
 import { formatMinutes } from '@/core/training/analytics';
+import { t } from '@/i18n/core';
 import { useOverview, useSkillRepository, useSkills } from '@/features/training/ui/useTraining';
-import { CATEGORY_LABELS, PRIORITY_LABELS, type Skill } from '../domain/skill';
+import { CATEGORY_LABELS, priorityText, type Skill } from '../domain/skill';
 import { SkillFormSheet } from './SkillFormSheet';
 
 export function SkillsScreen() {
@@ -33,11 +34,11 @@ export function SkillsScreen() {
 
   return (
     <Screen
-      title="Skills"
+      title={t('Skills')}
       trailing={
         <Button size="sm" onClick={() => setFormOpen(true)}>
           <Icon name="plus" size={18} />
-          Add
+          {t('Add')}
         </Button>
       }
     >
@@ -50,15 +51,15 @@ export function SkillsScreen() {
         <Card padded={false}>
           <EmptyState
             icon="star"
-            title="No skills yet"
-            description="A skill is something you practise. Track time and goals for each one."
+            title={t('No skills yet')}
+            description={t('A skill is something you practise. Track time and goals for each one.')}
             action={
               <div className="flex flex-col gap-2">
                 <Button loading={adding} onClick={() => void addSuggested()}>
-                  Add the 7 suggested skills
+                  {t('Add the 7 suggested skills')}
                 </Button>
                 <Button variant="secondary" onClick={() => setFormOpen(true)}>
-                  Create my own
+                  {t('Create my own')}
                 </Button>
               </div>
             }
@@ -82,11 +83,11 @@ export function SkillsScreen() {
             ))}
           </ul>
           {skills.length === 0 && (
-            <p className="py-6 text-center type-subhead text-muted">No archived skills.</p>
+            <p className="py-6 text-center type-subhead text-muted">{t('No archived skills.')}</p>
           )}
           <div className="mt-4 flex justify-center">
             <Chip selected={showArchived} onClick={() => setShowArchived((v) => !v)}>
-              {showArchived ? 'Hide archived' : 'Show archived'}
+              {showArchived ? t('Hide archived') : t('Show archived')}
             </Chip>
           </div>
         </>
@@ -108,11 +109,11 @@ function SkillCard({ skill, minutesThisWeek }: { skill: Skill; minutesThisWeek: 
         <div className="min-w-0">
           <p className="break-words type-headline">{skill.name}</p>
           <p className="type-subhead text-muted">
-            {CATEGORY_LABELS[skill.category]} · {PRIORITY_LABELS[skill.priority]} priority
+            {t(CATEGORY_LABELS[skill.category])} · {priorityText(skill.priority)}
           </p>
         </div>
         {skill.isArchived ? (
-          <Badge>Archived</Badge>
+          <Badge>{t('Archived')}</Badge>
         ) : (
           <Icon name="chevronRight" size={18} className="mt-1 text-muted" />
         )}
@@ -120,14 +121,20 @@ function SkillCard({ skill, minutesThisWeek }: { skill: Skill; minutesThisWeek: 
       <div className="mt-3">
         {goal ? (
           <>
-            <ProgressBar value={minutesThisWeek / goal} label={`${skill.name} weekly goal`} />
+            <ProgressBar
+              value={minutesThisWeek / goal}
+              label={t('{name} weekly goal', { name: skill.name })}
+            />
             <p className="mt-1.5 type-footnote text-muted">
-              {formatMinutes(minutesThisWeek)} of {formatMinutes(goal)} this week
+              {t('{done} of {goal} this week', {
+                done: formatMinutes(minutesThisWeek),
+                goal: formatMinutes(goal),
+              })}
             </p>
           </>
         ) : (
           <p className="type-footnote text-muted">
-            {formatMinutes(minutesThisWeek)} this week · no weekly goal
+            {t('{done} this week · no weekly goal', { done: formatMinutes(minutesThisWeek) })}
           </p>
         )}
       </div>

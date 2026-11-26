@@ -1,3 +1,5 @@
+import { intlLocale, t } from '@/i18n/core';
+
 /** Human-readable byte size, e.g. 1536 -> "1.5 KB". */
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return '—';
@@ -14,17 +16,18 @@ export function formatBytes(bytes: number): string {
 
 /** e.g. "22 Nov 2026, 14:05" in the device's locale and timezone. */
 export function formatDateTime(epochMs: number, locale?: string): string {
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
-    new Date(epochMs),
-  );
+  return new Intl.DateTimeFormat(locale ?? intlLocale(), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(epochMs));
 }
 
 /** Relative age such as "today", "yesterday", "5 days ago". */
 export function formatAgeDays(epochMs: number, now: number): string {
   const days = Math.floor((now - epochMs) / 86_400_000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  return `${days} days ago`;
+  if (days <= 0) return t('today');
+  if (days === 1) return t('yesterday');
+  return t('{days} days ago', { days });
 }
 
 /** Stopwatch text: "05:07" under an hour, "1:05:07" from an hour. */
@@ -40,13 +43,13 @@ export function formatClock(totalSeconds: number): string {
 
 /** "Today", "Yesterday", otherwise "Tue 24 Nov" for a YYYY-MM-DD local date. */
 export function formatDayLabel(localDate: string, today: string, locale?: string): string {
-  if (localDate === today) return 'Today';
+  if (localDate === today) return t('Today');
   const [y, m, d] = localDate.split('-').map(Number) as [number, number, number];
   const date = new Date(y, m - 1, d);
   const [ty, tm, td] = today.split('-').map(Number) as [number, number, number];
   const days = Math.round((new Date(ty, tm - 1, td).getTime() - date.getTime()) / 86_400_000);
-  if (days === 1) return 'Yesterday';
-  return new Intl.DateTimeFormat(locale, {
+  if (days === 1) return t('Yesterday');
+  return new Intl.DateTimeFormat(locale ?? intlLocale(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',

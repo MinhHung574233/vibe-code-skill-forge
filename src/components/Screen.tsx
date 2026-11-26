@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
 import { Icon } from './Icon';
 
@@ -43,7 +44,7 @@ export function Screen({ title, trailing, back, children, className }: ScreenPro
         {back && (
           <Link
             to={back.to}
-            aria-label={`Back to ${back.label}`}
+            aria-label={t('Back to {label}', { label: back.label })}
             className="absolute inset-y-0 left-1 flex min-w-11 items-center gap-0.5 rounded-xl px-2 text-accent active:opacity-60"
           >
             <Icon name="chevronLeft" size={22} />

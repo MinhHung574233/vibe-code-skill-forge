@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import { addDays, type LocalDate } from '../time/localDate';
 import type { DaySummary } from './streak';
 
@@ -94,8 +95,8 @@ export function distribution(items: readonly { key: string; durationSec: number 
 /** "1 h 05 min", "45 min", "0 min". Minutes are rounded to whole minutes. */
 export function formatMinutes(minutes: number): string {
   const whole = Math.round(minutes);
-  if (whole < 60) return `${whole} min`;
+  if (whole < 60) return t('{n} min', { n: whole });
   const h = Math.floor(whole / 60);
   const m = whole % 60;
-  return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')} min`;
+  return m === 0 ? t('{h} h', { h }) : t('{h} h {m} min', { h, m: String(m).padStart(2, '0') });
 }

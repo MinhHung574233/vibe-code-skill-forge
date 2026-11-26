@@ -5,6 +5,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { ListRow, Section } from '@/components/Section';
+import { t } from '@/i18n/core';
 import { MODULES } from '@/features/registry';
 import type { CompletionOutcome } from '@/features/training/domain/session';
 import { ManualLogSheet } from '@/features/training/ui/ManualLogSheet';
@@ -20,39 +21,40 @@ export function PracticeScreen() {
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
 
   return (
-    <Screen title="Practice">
+    <Screen title={t('Practice')}>
       <Card aria-labelledby="train-heading" role="region">
         <h2 id="train-heading" className="type-title-2">
-          Train
+          {t('Train')}
         </h2>
         <p className="mt-1 type-subhead text-muted">
-          Time yourself on any skill, or log a session you already did. Both feed your goals, streak
-          and progress.
+          {t(
+            'Time yourself on any skill, or log a session you already did. Both feed your goals, streak and progress.',
+          )}
         </p>
         <div className="mt-4 flex flex-col gap-2">
           <Link
             to="/practice/session"
             className="inline-flex min-h-[50px] items-center justify-center rounded-xl bg-accent px-5 type-headline text-on-accent active:scale-[0.98] active:opacity-80"
           >
-            Start a session
+            {t('Start a session')}
           </Link>
           <Button variant="secondary" onClick={() => setLogOpen(true)}>
-            Log a session
+            {t('Log a session')}
           </Button>
         </div>
       </Card>
 
-      <Section title="Training modules">
+      <Section title={t('Training modules')}>
         {MODULES.map((module) => (
           <ListRow
             key={module.id}
-            title={module.title}
-            subtitle={module.subtitle}
+            title={t(module.title)}
+            subtitle={t(module.subtitle)}
             icon={module.icon}
             iconColor={module.color}
             {...(module.status === 'available' && module.route
               ? { to: module.route }
-              : { accessory: <Badge>Coming soon</Badge> })}
+              : { accessory: <Badge>{t('Coming soon')}</Badge> })}
           />
         ))}
       </Section>

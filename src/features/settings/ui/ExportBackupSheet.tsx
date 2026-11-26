@@ -11,6 +11,7 @@ import {
 import { getDb } from '@/db/boot';
 import { toAppError } from '@/db/errors';
 import { countMarkerTables, totalRows } from '@/db/marker';
+import { t } from '@/i18n/core';
 import {
   canShareFiles,
   copyText,
@@ -38,7 +39,7 @@ type Prepared =
  */
 export function ExportBackupSheet({ open, onClose }: ExportBackupSheetProps) {
   return (
-    <Sheet open={open} onClose={onClose} title="Back up your data">
+    <Sheet open={open} onClose={onClose} title={t('Back up your data')}>
       {/* Mounted only while open, so every opening starts fresh and rebuilds the file. */}
       {open && <ExportBody />}
     </Sheet>
@@ -77,9 +78,9 @@ function ExportBody() {
       await settings.set('lastBackupRowCount', userRows);
       setNotice(doneMessage);
     } else if (result === 'failed') {
-      setNotice('That did not work. Try another option below.');
+      setNotice(t('That did not work. Try another option below.'));
     } else if (result === 'unsupported') {
-      setNotice('This option is not available on this device.');
+      setNotice(t('This option is not available on this device.'));
     }
     // 'cancelled': the user dismissed the share sheet; nothing to record or say.
   };
@@ -87,7 +88,7 @@ function ExportBody() {
   if (prepared.kind === 'preparing') {
     return (
       <p role="status" className="type-subhead text-muted">
-        Preparing your backup…
+        {t('Preparing your backup…')}
       </p>
     );
   }
@@ -105,18 +106,22 @@ function ExportBody() {
   return (
     <div>
       <p className="type-subhead text-muted">
-        {summary.totalRows} items · {Math.max(1, Math.round(text.length / 1024))} KB · {file.name}
+        {t('{items} items · {kb} KB · {name}', {
+          items: summary.totalRows,
+          kb: Math.max(1, Math.round(text.length / 1024)),
+          name: file.name,
+        })}
       </p>
       <div className="mt-4 flex flex-col gap-2">
         {canShare && (
           <Button
             onClick={() =>
               void shareFile(file).then((r) =>
-                finish(r, userRows, 'Backup saved. Keep a copy somewhere safe.'),
+                finish(r, userRows, t('Backup saved. Keep a copy somewhere safe.')),
               )
             }
           >
-            Save to Files or share
+            {t('Save to Files or share')}
           </Button>
         )}
         <Button
@@ -125,21 +130,21 @@ function ExportBody() {
             void finish(
               downloadFile(file),
               userRows,
-              'Download started. Check your Downloads or Files app to confirm it was saved.',
+              t('Download started. Check your Downloads or Files app to confirm it was saved.'),
             )
           }
         >
-          Download file
+          {t('Download file')}
         </Button>
         <Button
           variant="ghost"
           onClick={() =>
             void copyText(text).then((r) =>
-              finish(r, userRows, 'Copied. Paste it into a note or message to yourself.'),
+              finish(r, userRows, t('Copied. Paste it into a note or message to yourself.')),
             )
           }
         >
-          Copy as text
+          {t('Copy as text')}
         </Button>
       </div>
       {notice && (
@@ -148,8 +153,9 @@ function ExportBody() {
         </p>
       )}
       <p className="mt-4 type-footnote text-muted">
-        The file contains all your data and is not encrypted. Store it somewhere private, like
-        iCloud Drive.
+        {t(
+          'The file contains all your data and is not encrypted. Store it somewhere private, like iCloud Drive.',
+        )}
       </p>
     </div>
   );

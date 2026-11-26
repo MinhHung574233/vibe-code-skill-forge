@@ -12,6 +12,7 @@ import {
   MIN_SESSION_SEC,
 } from '@/core/training/config';
 import { getDb } from '@/db/boot';
+import { t } from '@/i18n/core';
 import { formatClock } from '@/utils/format';
 import {
   clearSessionDraft,
@@ -115,18 +116,23 @@ export function SessionScreen() {
   const canFinish = running && elapsedSec >= MIN_SESSION_SEC && !tooLong;
 
   return (
-    <Screen title="Session" back={{ to: '/practice', label: 'Practice' }}>
+    <Screen title={t('Training session')} back={{ to: '/practice', label: t('Practice') }}>
       {draft === undefined ? null : !running ? (
         <div className="space-y-4">
           <Card>
             <p className="type-body">
-              Start a timer, practise, then finish to save it. Timed sessions of{' '}
-              {MIN_REWARDED_TIMER_SESSION_SEC / 60} minutes or more earn XP and count for your
-              streak.
+              {t(
+                'Start a timer, practise, then finish to save it. Timed sessions of {minutes} minutes or more earn XP and count for your streak.',
+                { minutes: MIN_REWARDED_TIMER_SESSION_SEC / 60 },
+              )}
             </p>
           </Card>
-          <SelectField label="Skill" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
-            <option value="">No specific skill</option>
+          <SelectField
+            label={t('Skill')}
+            value={skillId}
+            onChange={(e) => setSkillId(e.target.value)}
+          >
+            <option value="">{t('No specific skill')}</option>
             {(skills ?? []).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -134,31 +140,32 @@ export function SessionScreen() {
             ))}
           </SelectField>
           <Button fullWidth onClick={() => void start()}>
-            Start
+            {t('Start')}
           </Button>
         </div>
       ) : (
         <div className="space-y-4">
           <Card className="text-center">
-            <p className="type-subhead text-muted">{skillName ?? 'Practice'}</p>
-            <p role="timer" aria-label="Elapsed time" className="type-timer py-2">
+            <p className="type-subhead text-muted">{skillName ?? t('Practice')}</p>
+            <p role="timer" aria-label={t('Elapsed time')} className="type-timer py-2">
               {formatClock(elapsedSec)}
             </p>
             <p className="type-footnote text-muted">
-              Keeps counting if you lock your phone. Finish when you are done.
+              {t('Keeps counting if you lock your phone. Finish when you are done.')}
             </p>
           </Card>
           <TextAreaField
-            label="Notes"
+            label={t('Notes')}
             maxLength={300}
-            hint="Optional: what you worked on."
+            hint={t('Optional: what you worked on.')}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
           {tooLong && (
             <p role="alert" className="type-subhead text-danger">
-              This timer ran for over 12 hours, which is too long to save. Discard it and start
-              again.
+              {t(
+                'This timer ran for over 12 hours, which is too long to save. Discard it and start again.',
+              )}
             </p>
           )}
           {error && (
@@ -167,19 +174,19 @@ export function SessionScreen() {
             </p>
           )}
           <Button fullWidth loading={saving} disabled={!canFinish} onClick={() => void finish()}>
-            {canFinish || tooLong ? 'Finish and save' : 'Finish (after 1 minute)'}
+            {canFinish || tooLong ? t('Finish and save') : t('Finish (after 1 minute)')}
           </Button>
           <Button fullWidth variant="ghost" onClick={() => setDiscardOpen(true)}>
-            Discard
+            {t('Discard')}
           </Button>
         </div>
       )}
 
       <ConfirmDialog
         open={discardOpen}
-        title="Discard this session?"
-        message="The time so far will not be saved."
-        confirmLabel="Discard"
+        title={t('Discard this session?')}
+        message={t('The time so far will not be saved.')}
+        confirmLabel={t('Discard')}
         destructive
         onCancel={() => setDiscardOpen(false)}
         onConfirm={() => void discard()}

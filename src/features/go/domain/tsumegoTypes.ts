@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import { BLACK, WHITE, boardFromRows, type Board, type Color } from './board';
 
 /** Which sides of a drawing are real board edges (the others run off the diagram). */
@@ -22,6 +23,22 @@ export const CATEGORY_LABELS: Readonly<Record<TsumegoCategory, string>> = {
   corner: 'Corner',
   race: 'Capturing race',
 };
+
+/** The category name in the current language (call at render time). */
+export function categoryLabel(category: TsumegoCategory): string {
+  switch (category) {
+    case 'vital-point':
+      return t('Vital point');
+    case 'two-eyes':
+      return t('Two eyes');
+    case 'false-eye':
+      return t('False eye');
+    case 'corner':
+      return t('Corner');
+    case 'race':
+      return t('Capturing race');
+  }
+}
 
 /** `capture` is the capturing race: capture the target group before your `protect` stone is taken. */
 export type Objective = 'live' | 'kill' | 'capture';
@@ -78,8 +95,16 @@ export const sameMove = (a: Pt, b: Pt): boolean => a[0] === b[0] && a[1] === b[1
 
 /** "Black to play and live", "White to play and kill", "Black to play and win the race". */
 export function objectiveText(problem: TsumegoProblem): string {
-  const side = problem.toPlay === 'black' ? 'Black' : 'White';
-  if (problem.objective === 'live') return `${side} to play and live`;
-  if (problem.objective === 'kill') return `${side} to play and kill the group with the triangle`;
-  return `${side} to play and win the capturing race`;
+  const black = problem.toPlay === 'black';
+  if (problem.objective === 'live') {
+    return black ? t('Black to play and live') : t('White to play and live');
+  }
+  if (problem.objective === 'kill') {
+    return black
+      ? t('Black to play and kill the group with the triangle')
+      : t('White to play and kill the group with the triangle');
+  }
+  return black
+    ? t('Black to play and win the capturing race')
+    : t('White to play and win the capturing race');
 }

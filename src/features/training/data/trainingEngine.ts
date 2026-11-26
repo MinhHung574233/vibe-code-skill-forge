@@ -13,6 +13,7 @@ import {
 import { levelForXp } from '@/core/training/levels';
 import { computeStreak, qualifyingDates, type StreakState } from '@/core/training/streak';
 import { toAppError } from '@/db/errors';
+import { t } from '@/i18n/core';
 import type { SkillForgeDB } from '@/db/schema';
 import { DexieSettingsRepository } from '@/features/settings/data/dexieSettingsRepository';
 import { loadModuleFacts, moduleFactTables } from './moduleFacts';
@@ -57,12 +58,12 @@ async function rewardFor(
   const override = await db.xpRules.get(activityType);
   const enabled = override ? override.enabled === 1 : true;
   const xp = override ? override.xp : DEFAULT_XP_RULES[activityType];
-  if (!enabled || xp <= 0) return { xp: 0, withheld: 'XP is turned off for this activity.' };
+  if (!enabled || xp <= 0) return { xp: 0, withheld: t('XP is turned off for this activity.') };
   if (activityType === 'practice_session') {
     if (source === 'manual')
-      return { xp: 0, withheld: 'Logged sessions count for time but earn no XP.' };
+      return { xp: 0, withheld: t('Logged sessions count for time but earn no XP.') };
     if (durationSec < MIN_REWARDED_TIMER_SESSION_SEC) {
-      return { xp: 0, withheld: 'Sessions under 5 minutes earn no XP.' };
+      return { xp: 0, withheld: t('Sessions under 5 minutes earn no XP.') };
     }
   }
   return { xp };
@@ -77,14 +78,15 @@ export class DexieTrainingEngine implements TrainingEngine, SessionManager {
   async recordSession(input: RecordSessionInput): Promise<Result<CompletionOutcome, AppError>> {
     const parsed = RecordSessionSchema.safeParse(input);
     if (!parsed.success) {
-      return err(new AppError('VALIDATION', parsed.error.issues[0]?.message ?? 'Invalid session.'));
+      const message = parsed.error.issues[0]?.message;
+      return err(new AppError('VALIDATION', message ? t(message) : t('Invalid session.')));
     }
     const s = parsed.data;
     if (!isActivityType(s.activityType)) {
-      return err(new AppError('VALIDATION', 'Unknown activity type.'));
+      return err(new AppError('VALIDATION', t('Unknown activity type.')));
     }
     if (s.endedAt > this.clock.now() + 5 * 60 * 1000) {
-      return err(new AppError('VALIDATION', 'A session cannot end in the future.'));
+      return err(new AppError('VALIDATION', t('A session cannot end in the future.')));
     }
 
     try {
@@ -99,9 +101,9 @@ export class DexieTrainingEngine implements TrainingEngine, SessionManager {
     try {
       await this.db.transaction('rw', tables(this.db), async () => {
         const session = await this.db.sessions.get(id);
-        if (!session) throw new AppError('VALIDATION', 'That session no longer exists.');
+        if (!session) throw new AppError('VALIDATION', t('That session no longer exists.'));
         if (session.activityType !== 'practice_session') {
-          throw new AppError('VALIDATION', 'Only practice sessions can be deleted.');
+          throw new AppError('VALIDATION', t('Only practice sessions can be deleted.'));
         }
         const key = sessionActivityKey(id);
         const earned = await this.db.xpLedger.where('activityKey').equals(key).toArray();

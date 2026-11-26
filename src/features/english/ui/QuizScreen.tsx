@@ -4,15 +4,21 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Screen } from '@/components/Screen';
+import { getLanguage, t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
 import { buildQuiz, type QuizQuestion } from '../domain/quiz';
 import { WORDS } from '../domain/vocabulary';
 
-const BACK = { to: '/practice/english', label: 'English' };
+/** The stored Vietnamese meaning of a term, shown after answering in Vietnamese mode. */
+function viMeaning(term: string): string | undefined {
+  return WORDS.find((w) => w.term === term)?.vi;
+}
+
 const QUIZ_LENGTH = 10;
 
 /** A 10-question recognition quiz: practice only, no XP and no change to your review schedule. */
 export function QuizScreen() {
+  const BACK = { to: '/practice/english', label: t('English') };
   const navigate = useNavigate();
   const [questions, setQuestions] = useState<QuizQuestion[]>(() => buildQuiz(WORDS, QUIZ_LENGTH));
   const [index, setIndex] = useState(0);
@@ -42,18 +48,18 @@ export function QuizScreen() {
 
   if (finished) {
     return (
-      <Screen title="Quiz" back={BACK}>
+      <Screen title={t('Quiz')} back={BACK}>
         <Card>
           <h2 className="type-title-2" role="status">
-            {score} of {questions.length} correct
+            {t('{score} of {total} correct', { score, total: questions.length })}
           </h2>
           <p className="mt-1 type-body text-muted">
-            Practice only: quizzes do not change your review schedule or earn XP.
+            {t('Practice only: quizzes do not change your review schedule or earn XP.')}
           </p>
           <div className="mt-4 flex flex-col gap-2">
-            <Button onClick={again}>New quiz</Button>
+            <Button onClick={again}>{t('New quiz')}</Button>
             <Button variant="secondary" onClick={() => void navigate('/practice/english')}>
-              Back to English
+              {t('Back to English')}
             </Button>
           </div>
         </Card>
@@ -61,18 +67,18 @@ export function QuizScreen() {
     );
   }
 
-  if (!question) return <Screen title="Quiz" back={BACK} />;
+  if (!question) return <Screen title={t('Quiz')} back={BACK} />;
 
   return (
-    <Screen title="Quiz" back={BACK}>
-      <ProgressBar value={index / questions.length} label="Quiz progress" />
+    <Screen title={t('Quiz')} back={BACK}>
+      <ProgressBar value={index / questions.length} label={t('Quiz progress')} />
       <p className="mt-2 px-1 type-footnote text-muted">
-        Question {index + 1} of {questions.length}
+        {t('Question {n} of {total}', { n: index + 1, total: questions.length })}
       </p>
       <Card className="mt-3">
-        <p className="type-subhead text-muted">Which term matches this definition?</p>
+        <p className="type-subhead text-muted">{t('Which term matches this definition?')}</p>
         <h2 className="mt-1 type-headline">{question.prompt}</h2>
-        <div className="mt-3 space-y-2" role="group" aria-label="Answers">
+        <div className="mt-3 space-y-2" role="group" aria-label={t('Answers')}>
           {question.options.map((option, i) => {
             const isRight = i === question.correct;
             const isPicked = picked === i;
@@ -91,12 +97,21 @@ export function QuizScreen() {
                       : 'border-border bg-surface',
                 )}
               >
-                <span className="min-w-0 flex-1 break-words">{option}</span>
+                <span className="min-w-0 flex-1 break-words">
+                  {option}
+                  {picked !== null && getLanguage() === 'vi' && viMeaning(option) && (
+                    <span className="block type-footnote text-muted">{viMeaning(option)}</span>
+                  )}
+                </span>
                 {picked !== null && isRight && (
-                  <span className="ml-2 type-footnote font-medium text-success">Correct</span>
+                  <span className="ml-2 type-footnote font-medium text-success">
+                    {t('Correct')}
+                  </span>
                 )}
                 {isPicked && !isRight && (
-                  <span className="ml-2 type-footnote font-medium text-danger">Not this one</span>
+                  <span className="ml-2 type-footnote font-medium text-danger">
+                    {t('Not this one')}
+                  </span>
                 )}
               </button>
             );
@@ -106,7 +121,7 @@ export function QuizScreen() {
       {picked !== null && (
         <div className="mt-4">
           <Button fullWidth onClick={next}>
-            {index + 1 === questions.length ? 'See result' : 'Next question'}
+            {index + 1 === questions.length ? t('See result') : t('Next question')}
           </Button>
         </div>
       )}

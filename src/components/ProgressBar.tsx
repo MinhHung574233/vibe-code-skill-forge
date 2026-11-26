@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import { useEffect, useState } from 'react';
 import { clamp01 } from './ProgressRing';
 
@@ -24,7 +25,7 @@ export function ProgressBar({ value, color = 'var(--accent)', label }: ProgressB
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}
-      aria-valuetext={`${percent} percent`}
+      aria-valuetext={t('{percent} percent', { percent })}
       className="h-2 w-full overflow-hidden rounded-full bg-border"
     >
       <div

@@ -3,6 +3,7 @@ import { newId } from '@/core/ids';
 import { err, ok, type Result } from '@/core/result';
 import type { Clock } from '@/core/time/clock';
 import { toAppError } from '@/db/errors';
+import { t } from '@/i18n/core';
 import type { SkillGoalRow, SkillRow } from '@/db/rows';
 import type { SkillForgeDB } from '@/db/schema';
 import {
@@ -76,7 +77,7 @@ export class DexieSkillRepository implements SkillRepository {
         await this.writeGoal(id, data.weeklyGoalMinutes, now);
       });
       const created = await this.get(id);
-      return created ? ok(created) : err(new AppError('IO', 'The skill could not be saved.'));
+      return created ? ok(created) : err(new AppError('IO', t('The skill could not be saved.')));
     } catch (cause) {
       return err(toAppError(cause));
     }
@@ -91,7 +92,7 @@ export class DexieSkillRepository implements SkillRepository {
       await this.db.transaction('rw', [this.db.skills, this.db.skillGoals], async () => {
         const existing = await this.db.skills.get(id);
         if (!existing || existing.deletedAt !== undefined) {
-          throw new AppError('VALIDATION', 'That skill no longer exists.');
+          throw new AppError('VALIDATION', t('That skill no longer exists.'));
         }
         await this.db.skills.put({
           ...rowFrom(id, data, existing.createdAt, now),
@@ -101,7 +102,7 @@ export class DexieSkillRepository implements SkillRepository {
         await this.writeGoal(id, data.weeklyGoalMinutes, now);
       });
       const updated = await this.get(id);
-      return updated ? ok(updated) : err(new AppError('IO', 'The skill could not be saved.'));
+      return updated ? ok(updated) : err(new AppError('IO', t('The skill could not be saved.')));
     } catch (cause) {
       return err(toAppError(cause));
     }
@@ -114,7 +115,7 @@ export class DexieSkillRepository implements SkillRepository {
         updatedAt: this.clock.now(),
       });
       return changed === 0
-        ? err(new AppError('VALIDATION', 'That skill no longer exists.'))
+        ? err(new AppError('VALIDATION', t('That skill no longer exists.')))
         : ok(undefined);
     } catch (cause) {
       return err(toAppError(cause));
@@ -126,7 +127,7 @@ export class DexieSkillRepository implements SkillRepository {
     try {
       const changed = await this.db.skills.update(id, { deletedAt: now, updatedAt: now });
       return changed === 0
-        ? err(new AppError('VALIDATION', 'That skill no longer exists.'))
+        ? err(new AppError('VALIDATION', t('That skill no longer exists.')))
         : ok(undefined);
     } catch (cause) {
       return err(toAppError(cause));
@@ -174,7 +175,7 @@ export class DexieSkillRepository implements SkillRepository {
 }
 
 const validation = (message: string | undefined) =>
-  new AppError('VALIDATION', message ?? 'That is not a valid skill.');
+  new AppError('VALIDATION', message ? t(message) : t('That is not a valid skill.'));
 
 function rowFrom(
   id: string,

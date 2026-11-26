@@ -1,3 +1,5 @@
+import { t } from '@/i18n/core';
+
 /**
  * When to remind the user to back up (PRD §5.9). Backups are the only protection against iOS
  * storage eviction, deleting the Home Screen icon and device loss, so the reminder is real
@@ -41,10 +43,12 @@ export function describeNudge(nudge: BackupNudge): string | null {
     case 'none':
       return null;
     case 'never':
-      return 'You have not backed up yet. A backup is the only way to recover your data if iOS clears it.';
+      return t(
+        'You have not backed up yet. A backup is the only way to recover your data if iOS clears it.',
+      );
     case 'overdue':
-      return `Your last backup was ${nudge.days} days ago.`;
+      return t('Your last backup was {days} days ago.', { days: nudge.days });
     case 'many-changes':
-      return `${nudge.added} new items since your last backup.`;
+      return t('{added} new items since your last backup.', { added: nudge.added });
   }
 }

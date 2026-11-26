@@ -13,12 +13,13 @@ import { StatTile } from '@/components/StatTile';
 import { newId } from '@/core/ids';
 import { systemClock } from '@/core/time/clock';
 import { getDb } from '@/db/boot';
+import { intlLocale, t } from '@/i18n/core';
 import { clearDraft, loadDraft, loadFinishedGames, saveDraft } from '../data/caroRepository';
 import { LEVELS, type Level } from '../domain/ai/levels';
 import type { BoardSize } from '../domain/board';
 import type { CaroDraft, Outcome } from '../domain/play';
 import { computeStats, type Tally } from '../domain/stats';
-import { CARO_PLAY, LEVEL_LABEL, LEVEL_NOTE, OUTCOME_LABEL } from './labels';
+import { CARO_PLAY, levelLabel, levelNote, outcomeLabel } from './labels';
 
 const OUTCOME_TONE: Record<Outcome, BadgeTone> = {
   win: 'success',
@@ -29,8 +30,10 @@ const RECENT_GAMES = 10;
 
 const percent = (rate: number | null): string =>
   rate === null ? '–' : `${Math.round(rate * 100)}%`;
-const tallyText = (t: Tally): string => `${t.won} W · ${t.lost} L · ${t.drawn} D`;
-const dayFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+const tallyText = (tally: Tally): string =>
+  t('{won} W · {lost} L · {drawn} D', { won: tally.won, lost: tally.lost, drawn: tally.drawn });
+const formatDay = (at: number): string =>
+  new Intl.DateTimeFormat(intlLocale(), { month: 'short', day: 'numeric' }).format(at);
 
 /** Module home: set up a game, resume the one in progress, and see the record so far. */
 export function CaroHome() {
@@ -62,7 +65,7 @@ export function CaroHome() {
     try {
       await saveDraft(getDb(), next, now);
     } catch {
-      setError('Could not start the game. Try again.');
+      setError(t('Could not start the game. Try again.'));
       return;
     }
     void navigate(CARO_PLAY);
@@ -73,24 +76,25 @@ export function CaroHome() {
     try {
       await clearDraft(getDb()); // abandoning records nothing
     } catch {
-      setError('Could not discard the game. Try again.');
+      setError(t('Could not discard the game. Try again.'));
     }
   };
 
   return (
-    <Screen title="Caro" back={{ to: '/practice', label: 'Practice' }}>
+    <Screen title={t('Caro')} back={{ to: '/practice', label: t('Practice') }}>
       {draft && (
         <Card role="region" aria-labelledby="caro-resume" className="mb-4">
           <h2 id="caro-resume" className="type-title-2">
-            Game in progress
+            {t('Game in progress')}
           </h2>
           <p className="mt-1 type-subhead text-muted">
-            {LEVEL_LABEL[draft.level]} · {draft.size}×{draft.size} · {draft.moves.length} moves
+            {levelLabel(draft.level)} · {draft.size}×{draft.size} ·{' '}
+            {t('{count} moves', { count: draft.moves.length })}
           </p>
           <div className="mt-4 flex flex-col gap-2">
-            <Button onClick={() => void navigate(CARO_PLAY)}>Resume</Button>
+            <Button onClick={() => void navigate(CARO_PLAY)}>{t('Resume')}</Button>
             <Button variant="ghost" onClick={() => setDiscardOpen(true)}>
-              Discard
+              {t('Discard')}
             </Button>
           </div>
         </Card>
@@ -98,40 +102,40 @@ export function CaroHome() {
 
       <Card role="region" aria-labelledby="caro-new">
         <h2 id="caro-new" className="type-title-2">
-          New game
+          {t('New game')}
         </h2>
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
-            <p className="type-subhead font-medium text-muted">Level</p>
+            <p className="type-subhead font-medium text-muted">{t('Level')}</p>
             <SegmentedControl
-              label="Level"
+              label={t('Level')}
               value={level}
               onChange={setLevel}
-              options={LEVELS.map((value) => ({ value, label: LEVEL_LABEL[value] }))}
+              options={LEVELS.map((value) => ({ value, label: levelLabel(value) }))}
             />
-            <p className="type-footnote text-muted">{LEVEL_NOTE[level]}</p>
+            <p className="type-footnote text-muted">{levelNote(level)}</p>
           </div>
           <div className="space-y-2">
-            <p className="type-subhead font-medium text-muted">Board</p>
+            <p className="type-subhead font-medium text-muted">{t('Board')}</p>
             <SegmentedControl
-              label="Board size"
+              label={t('Board size')}
               value={String(size) as '15' | '9'}
               onChange={(value) => setSize(value === '9' ? 9 : 15)}
               options={[
                 { value: '15', label: '15 × 15' },
-                { value: '9', label: '9 × 9 quick' },
+                { value: '9', label: t('9 × 9 quick') },
               ]}
             />
           </div>
           <div className="space-y-2">
-            <p className="type-subhead font-medium text-muted">Who moves first</p>
+            <p className="type-subhead font-medium text-muted">{t('Who moves first')}</p>
             <SegmentedControl
-              label="Who moves first"
+              label={t('Who moves first')}
               value={first}
               onChange={setFirst}
               options={[
-                { value: 'player', label: 'You' },
-                { value: 'computer', label: 'Computer' },
+                { value: 'player', label: t('You') },
+                { value: 'computer', label: t('Computer') },
               ]}
             />
           </div>
@@ -141,28 +145,30 @@ export function CaroHome() {
             </p>
           )}
           <Button fullWidth onClick={() => (draft ? setReplaceOpen(true) : void start())}>
-            Start game
+            {t('Start game')}
           </Button>
         </div>
       </Card>
 
       {stats && games && (
         <>
-          <Section title="Your record">
+          <Section title={t('Your record')}>
             {stats.total.played === 0 ? (
               <EmptyState
                 icon="stones"
-                title="No games yet"
-                description="Finish a game to start your record. Resigned games are not counted."
+                title={t('No games yet')}
+                description={t(
+                  'Finish a game to start your record. Resigned games are not counted.',
+                )}
               />
             ) : (
               <div className="grid grid-cols-3 gap-2 bg-bg p-2">
-                <StatTile label="Played" value={String(stats.total.played)} />
-                <StatTile label="Win rate" value={percent(stats.winRate)} />
+                <StatTile label={t('Played')} value={String(stats.total.played)} />
+                <StatTile label={t('Win rate')} value={percent(stats.winRate)} />
                 <StatTile
-                  label="Win streak"
+                  label={t('Win streak')}
                   value={String(stats.winStreak)}
-                  hint={`Best ${stats.bestWinStreak}`}
+                  hint={t('Best {n}', { n: stats.bestWinStreak })}
                 />
               </div>
             )}
@@ -170,14 +176,14 @@ export function CaroHome() {
 
           {stats.total.played > 0 && (
             <>
-              <Section title="By level">
+              <Section title={t('By level')}>
                 {LEVELS.map((value) => {
                   const tally = stats.byLevel[value];
                   return (
                     <ListRow
                       key={value}
-                      title={LEVEL_LABEL[value]}
-                      subtitle={`${tally.played} played`}
+                      title={levelLabel(value)}
+                      subtitle={t('{count} played', { count: tally.played })}
                       accessory={
                         <span className="type-subhead tabular-nums text-muted">
                           {tallyText(tally)}
@@ -188,14 +194,14 @@ export function CaroHome() {
                 })}
               </Section>
 
-              <Section title="Recent games">
+              <Section title={t('Recent games')}>
                 {games.slice(0, RECENT_GAMES).map((game) => (
                   <ListRow
                     key={game.id}
-                    title={`${LEVEL_LABEL[game.level]} · ${game.size}×${game.size}`}
-                    subtitle={`${game.moves} moves · ${dayFormat.format(game.endedAt)}`}
+                    title={`${levelLabel(game.level)} · ${game.size}×${game.size}`}
+                    subtitle={`${t('{count} moves', { count: game.moves })} · ${formatDay(game.endedAt)}`}
                     accessory={
-                      <Badge tone={OUTCOME_TONE[game.outcome]}>{OUTCOME_LABEL[game.outcome]}</Badge>
+                      <Badge tone={OUTCOME_TONE[game.outcome]}>{outcomeLabel(game.outcome)}</Badge>
                     }
                   />
                 ))}
@@ -208,18 +214,20 @@ export function CaroHome() {
       <ConfirmDialog
         open={replaceOpen}
         destructive
-        title="Replace the game in progress?"
-        message="Starting a new game discards the one you are playing. Nothing is recorded for it."
-        confirmLabel="Start new game"
+        title={t('Replace the game in progress?')}
+        message={t(
+          'Starting a new game discards the one you are playing. Nothing is recorded for it.',
+        )}
+        confirmLabel={t('Start new game')}
         onConfirm={() => void start()}
         onCancel={() => setReplaceOpen(false)}
       />
       <ConfirmDialog
         open={discardOpen}
         destructive
-        title="Discard this game?"
-        message="It will be removed and nothing is recorded: no result, no XP."
-        confirmLabel="Discard"
+        title={t('Discard this game?')}
+        message={t('It will be removed and nothing is recorded: no result, no XP.')}
+        confirmLabel={t('Discard')}
         onConfirm={() => void discard()}
         onCancel={() => setDiscardOpen(false)}
       />

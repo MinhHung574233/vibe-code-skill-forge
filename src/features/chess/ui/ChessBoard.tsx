@@ -1,7 +1,8 @@
 import type { Color, PieceSymbol, Square } from 'chess.js';
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { cn } from '@/utils/cn';
-import { PIECE_NAMES } from '../domain/rules';
+import { t } from '@/i18n/core';
+import { EMPTY_SQUARE_KEY, OCCUPANT_KEYS } from './labels';
 import { PieceGlyph } from './pieces';
 
 const FILES = 'abcdefgh';
@@ -65,10 +66,7 @@ const KEY_DELTA: Record<string, readonly [number, number]> = {
   ArrowDown: [0, 1],
 };
 
-function overlayColor(
-  isSelected: boolean,
-  feedback: 'good' | 'bad' | null,
-): string {
+function overlayColor(isSelected: boolean, feedback: 'good' | 'bad' | null): string {
   if (isSelected) return 'color-mix(in srgb, var(--accent) 60%, transparent)';
   if (feedback === 'good') return 'color-mix(in srgb, var(--success) 55%, transparent)';
   if (feedback === 'bad') return 'color-mix(in srgb, var(--danger) 55%, transparent)';
@@ -89,7 +87,7 @@ export function ChessBoard({
   checkSquare,
   hints = [],
   feedback,
-  label = 'Chess board',
+  label,
 }: ChessBoardProps) {
   const pieces = useMemo(() => piecesFromFen(fen), [fen]);
   const [selected, setSelected] = useState<{ fen: string; square: Square } | null>(null);
@@ -126,7 +124,8 @@ export function ChessBoard({
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const delta = KEY_DELTA[event.key];
-    const current = event.target instanceof HTMLElement ? event.target.dataset['square'] : undefined;
+    const current =
+      event.target instanceof HTMLElement ? event.target.dataset['square'] : undefined;
     if (!delta || !current) return;
     event.preventDefault();
     const index = squares.indexOf(current as Square);
@@ -142,7 +141,7 @@ export function ChessBoard({
     <div
       ref={rootRef}
       role="group"
-      aria-label={label}
+      aria-label={label ?? t('Chess board')}
       onKeyDown={onKeyDown}
       className="mx-auto grid aspect-square w-full max-w-[34rem] touch-none select-none grid-cols-8 grid-rows-8 overflow-hidden rounded-xl border border-border"
     >
@@ -158,14 +157,14 @@ export function ChessBoard({
         const isHint = hints.includes(square);
         const tone = feedback?.square === square ? feedback.tone : null;
         const occupant = piece
-          ? `${square}, ${piece.color === 'w' ? 'white' : 'black'} ${PIECE_NAMES[piece.type]}`
-          : `${square}, empty`;
+          ? t(OCCUPANT_KEYS[`${piece.color}${piece.type}`], { square })
+          : t(EMPTY_SQUARE_KEY, { square });
         const spoken = [
           occupant,
-          isSelected && 'selected',
-          isTarget && (piece ? 'capture' : 'legal move'),
-          isCheck && 'king in check',
-          isHint && 'hint',
+          isSelected && t('selected'),
+          isTarget && (piece ? t('capture') : t('legal move')),
+          isCheck && t('king in check'),
+          isHint && t('hint'),
         ]
           .filter(Boolean)
           .join(', ');
@@ -225,20 +224,18 @@ export function ChessBoard({
             {i % 8 === 0 && (
               <span
                 aria-hidden="true"
-                className="absolute left-0.5 top-0 text-[10px] font-semibold leading-tight"
+                data-coord={rank}
+                className="absolute left-0.5 top-0 text-[10px] font-semibold leading-tight after:content-[attr(data-coord)]"
                 style={{ color: dark ? LIGHT : DARK }}
-              >
-                {rank}
-              </span>
+              />
             )}
             {i >= 56 && (
               <span
                 aria-hidden="true"
-                className="absolute bottom-0 right-0.5 text-[10px] font-semibold leading-tight"
+                data-coord={square[0]}
+                className="absolute bottom-0 right-0.5 text-[10px] font-semibold leading-tight after:content-[attr(data-coord)]"
                 style={{ color: dark ? LIGHT : DARK }}
-              >
-                {square[0]}
-              </span>
+              />
             )}
           </button>
         );

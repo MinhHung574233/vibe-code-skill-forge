@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link, Route, Routes, useLocation, useParams } from 'react-router';
 import { EmptyState } from '@/components/EmptyState';
 import { Screen } from '@/components/Screen';
+import { t } from '@/i18n/core';
 import { createAiEngine, type AiEngine } from './aiEngine';
 import { GoHome } from './GoHome';
 import { GoRouteContext, type GoContext } from './hooks';
@@ -16,14 +17,14 @@ interface GoModuleProps {
 
 function NotFound({ home }: { home: string }) {
   return (
-    <Screen title="Go" back={{ to: home, label: 'Go' }}>
+    <Screen title={t('Go')} back={{ to: home, label: t('Go') }}>
       <EmptyState
         icon="alert"
-        title="Page not found"
-        description="That Go page does not exist."
+        title={t('Page not found')}
+        description={t('That Go page does not exist.')}
         action={
           <Link to={home} className="type-headline text-accent">
-            Back to Go
+            {t('Back to Go')}
           </Link>
         }
       />

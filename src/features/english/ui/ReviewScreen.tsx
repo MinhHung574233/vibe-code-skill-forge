@@ -7,14 +7,13 @@ import { Screen } from '@/components/Screen';
 import { newId } from '@/core/ids';
 import { toLocalDate } from '@/core/time/localDate';
 import { useNow } from '@/hooks/useNow';
+import { t } from '@/i18n/core';
 import type { CompletionOutcome } from '@/features/training/domain/session';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import type { ReviewSummary } from '../data/vocabService';
 import { buildQueue, describeInterval, NEW_CARD, type Grade, type QueueItem } from '../domain/srs';
 import { WORDS } from '../domain/vocabulary';
 import { NEW_WORDS_PER_DAY, useVocabService } from './useEnglish';
-
-const BACK = { to: '/practice/english', label: 'English' };
 
 const GRADE_BUTTONS: readonly { grade: Grade; label: string }[] = [
   { grade: 'again', label: 'Again' },
@@ -33,6 +32,7 @@ function speak(text: string): void {
 
 /** One flashcard session: reveal, grade, repeat. Forgotten cards come back later in the session. */
 export function ReviewScreen() {
+  const BACK = { to: '/practice/english', label: t('English') };
   const service = useVocabService();
   const navigate = useNavigate();
   const now = useNow();
@@ -77,7 +77,7 @@ export function ReviewScreen() {
     try {
       await service.grade(item.word.id, grade);
     } catch {
-      setError('Could not save your answer. Try again.');
+      setError(t('Could not save your answer. Try again.'));
       setBusy(false);
       return;
     }
@@ -102,19 +102,29 @@ export function ReviewScreen() {
     else setError(result.error.message);
   };
 
-  if (queue === null) return <Screen title="Review" back={BACK} />;
+  if (queue === null) return <Screen title={t('Review')} back={BACK} />;
 
   if (finished) {
     return (
-      <Screen title="Review" back={BACK}>
+      <Screen title={t('Review')} back={BACK}>
         <Card>
           <h2 className="type-title-2">
-            {summary.answers === 0 ? 'Nothing reviewed' : 'Session complete'}
+            {summary.answers === 0 ? t('Nothing reviewed') : t('Session complete')}
           </h2>
           <p className="mt-1 type-body text-muted">
             {summary.answers === 0
-              ? 'You have not answered any card yet.'
-              : `${summary.recalled} of ${summary.answers} answers recalled, ${summary.newWords} new ${summary.newWords === 1 ? 'word' : 'words'}.`}
+              ? t('You have not answered any card yet.')
+              : summary.newWords === 1
+                ? t('{recalled} of {answers} answers recalled, {n} new word.', {
+                    recalled: summary.recalled,
+                    answers: summary.answers,
+                    n: summary.newWords,
+                  })
+                : t('{recalled} of {answers} answers recalled, {n} new words.', {
+                    recalled: summary.recalled,
+                    answers: summary.answers,
+                    n: summary.newWords,
+                  })}
           </p>
           {error && (
             <p role="alert" className="mt-3 type-subhead text-danger">
@@ -124,11 +134,11 @@ export function ReviewScreen() {
           <div className="mt-4 flex flex-col gap-2">
             {summary.answers > 0 && !outcome && (
               <Button loading={busy} onClick={() => void save()}>
-                Save session
+                {t('Save session')}
               </Button>
             )}
             <Button variant="secondary" onClick={() => void navigate('/practice/english')}>
-              Back to English
+              {t('Back to English')}
             </Button>
           </div>
         </Card>
@@ -143,38 +153,42 @@ export function ReviewScreen() {
     );
   }
 
-  if (!item) return <Screen title="Review" back={BACK} />;
+  if (!item) return <Screen title={t('Review')} back={BACK} />;
   const { word } = item;
   const card = item.progress ?? NEW_CARD;
 
   return (
-    <Screen title="Review" back={BACK}>
-      <ProgressBar value={queue.length === 0 ? 1 : index / queue.length} label="Session progress" />
+    <Screen title={t('Review')} back={BACK}>
+      <ProgressBar
+        value={queue.length === 0 ? 1 : index / queue.length}
+        label={t('Session progress')}
+      />
       <p className="mt-2 px-1 type-footnote text-muted" aria-live="polite">
-        Card {index + 1} of {queue.length}
-        {item.progress === null ? ' · new word' : ''}
+        {item.progress === null
+          ? t('Card {n} of {total} · new word', { n: index + 1, total: queue.length })
+          : t('Card {n} of {total}', { n: index + 1, total: queue.length })}
       </p>
 
       <Card className="mt-3 min-h-64">
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="type-title-1">{word.term}</h2>
-            <p className="type-subhead text-muted">{word.pos}</p>
+            <p className="type-subhead text-muted">{t(word.pos)}</p>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            aria-label={`Hear “${word.term}”`}
+            aria-label={t('Listen to “{term}”', { term: word.term })}
             onClick={() => speak(word.term)}
           >
-            Listen
+            {t('Listen')}
           </Button>
         </div>
         {revealed ? (
           <div className="mt-4 space-y-3">
             <p className="type-body">{word.definition}</p>
             <p className="type-body text-muted">
-              <span className="font-medium text-text">Example: </span>
+              <span className="font-medium text-text">{t('Example: ')}</span>
               {word.example}
             </p>
             <p className="type-body">
@@ -184,7 +198,7 @@ export function ReviewScreen() {
           </div>
         ) : (
           <p className="mt-6 type-subhead text-muted">
-            Try to recall the meaning first, then reveal the answer.
+            {t('Try to recall the meaning first, then reveal the answer.')}
           </p>
         )}
       </Card>
@@ -209,7 +223,7 @@ export function ReviewScreen() {
                 disabled={busy}
                 onClick={() => void answer(grade)}
               >
-                <span>{label}</span>
+                <span>{t(label)}</span>
                 <span className="type-caption font-normal opacity-80">
                   {describeInterval(card, grade, now)}
                 </span>
@@ -218,11 +232,11 @@ export function ReviewScreen() {
           </div>
         ) : (
           <Button fullWidth onClick={() => setRevealed(true)}>
-            Show answer
+            {t('Show answer')}
           </Button>
         )}
         <Button variant="ghost" fullWidth className="mt-2" onClick={() => setEnded(true)}>
-          End session
+          {t('End session')}
         </Button>
       </div>
     </Screen>

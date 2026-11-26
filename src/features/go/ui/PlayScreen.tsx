@@ -9,6 +9,7 @@ import { Screen } from '@/components/Screen';
 import { MAX_SESSION_SEC } from '@/core/training/config';
 import { systemClock } from '@/core/time/clock';
 import { getDb } from '@/db/boot';
+import { t } from '@/i18n/core';
 import type { CompletionOutcome } from '@/features/training/domain/session';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import { useTrainingEngine } from '@/features/training/ui/useTraining';
@@ -35,21 +36,28 @@ import { areaScore, toggleDeadGroup } from '../domain/scoring';
 import { suggestDeadStones } from '../domain/playout';
 import { GoBoard, type PointMark } from './GoBoard';
 import { useGoContext, useGoRepository } from './hooks';
-import { pointName, starPoints } from './labels';
+import { colorName, pointName, resultNotation, starPoints } from './labels';
 import { ResultSheet } from './ResultSheet';
 
 /** A finished game must have this many human stones to count (the product rule: >= 5 moves). */
 export const MIN_RECORDED_MOVES = 5;
 
-const REJECTION_TEXT: Record<MoveRejection, string> = {
-  occupied: 'That point is taken.',
-  suicide: 'Not allowed: a stone with no liberties and no capture (suicide).',
-  superko: 'Not allowed: that would repeat an earlier board position (ko). Play elsewhere first.',
-  'game-over': 'The game is over.',
-  'off-board': 'That point is not on the board.',
-};
-
-const colorLabel = (c: Color) => (c === BLACK ? 'Black' : 'White');
+function rejectionText(reason: MoveRejection): string {
+  switch (reason) {
+    case 'occupied':
+      return t('That point is taken.');
+    case 'suicide':
+      return t('Not allowed: a stone with no liberties and no capture (suicide).');
+    case 'superko':
+      return t(
+        'Not allowed: that would repeat an earlier board position (ko). Play elsewhere first.',
+      );
+    case 'game-over':
+      return t('The game is over.');
+    case 'off-board':
+      return t('That point is not on the board.');
+  }
+}
 
 /**
  * The nearest earlier position where it is the human's turn again, so Undo takes back the
@@ -66,14 +74,19 @@ function undoTarget(game: GameState, human: Color): GameState | null {
 /** One sentence for the screen-reader live region. */
 function describeLastMove(game: GameState, human: Color): string {
   const move = game.moves.at(-1);
-  if (game.resignedBy !== null) return `${colorLabel(game.resignedBy)} resigned.`;
+  if (game.resignedBy !== null) {
+    return t('{color} resigned.', { color: colorName(game.resignedBy) });
+  }
   if (!move) return '';
-  const who = move.color === human ? 'You' : 'The computer';
-  if (move.point === null) return `${who} passed.`;
+  const who = move.color === human ? t('You') : t('The computer');
+  if (move.point === null) return t('{who} passed.', { who });
   const before = game.prev?.captures ?? game.captures;
   const taken = game.captures.black + game.captures.white - before.black - before.white;
   const where = pointName(game.config.size, move.point);
-  return `${who} played ${where}${taken > 0 ? ` and captured ${taken} stone${taken > 1 ? 's' : ''}` : ''}.`;
+  if (taken <= 0) return t('{who} played {where}.', { who, where });
+  return taken > 1
+    ? t('{who} played {where} and captured {n} stones.', { who, where, n: taken })
+    : t('{who} played {where} and captured {n} stone.', { who, where, n: taken });
 }
 
 type Stage = 'play' | 'result' | 'xp';
@@ -246,7 +259,7 @@ export function PlayScreen() {
     if (!game) return;
     const played = playStone(game, point);
     if (!played.ok) {
-      setMessage(REJECTION_TEXT[played.reason]);
+      setMessage(rejectionText(played.reason));
       return;
     }
     setMessage(null);
@@ -268,7 +281,7 @@ export function PlayScreen() {
     // larger boards: tap to preview, tap the same point (or "Place stone") to confirm
     const probe = playStone(game, point);
     if (!probe.ok) {
-      setMessage(REJECTION_TEXT[probe.reason]);
+      setMessage(rejectionText(probe.reason));
       setPending(null);
       return;
     }
@@ -278,20 +291,20 @@ export function PlayScreen() {
 
   if (draft === undefined) {
     return (
-      <Screen title="Game" back={{ to: base, label: 'Go' }}>
+      <Screen title={t('Game')} back={{ to: base, label: t('Go') }}>
         <p className="type-subhead text-muted" aria-busy="true">
-          Loading…
+          {t('Loading…')}
         </p>
       </Screen>
     );
   }
   if (!game || !draft) {
     return (
-      <Screen title="Game" back={{ to: base, label: 'Go' }}>
+      <Screen title={t('Game')} back={{ to: base, label: t('Go') }}>
         <EmptyState
           icon="stones"
-          title="No game in progress"
-          description="Start a new game from the Go home screen."
+          title={t('No game in progress')}
+          description={t('Start a new game from the Go home screen.')}
         />
       </Screen>
     );
@@ -302,16 +315,18 @@ export function PlayScreen() {
   const last = game.moves.at(-1);
   const lastPoint = last?.point ?? null;
   const prisoners = game.captures;
-  const stoneNames = { you: colorLabel(human), computer: colorLabel(ai) };
+  const stoneNames = { you: colorName(human), computer: colorName(ai) };
 
   const statusText =
     status === 'scoring'
-      ? 'Both players passed. Tap groups to mark them dead, then accept the result.'
+      ? t('Both players passed. Tap groups to mark them dead, then accept the result.')
       : thinking
-        ? 'The computer is thinking…'
+        ? t('The computer is thinking…')
         : humanTurn
-          ? `${last && last.point === null ? 'The computer passed. ' : ''}Your turn (${stoneNames.you})`
-          : 'Waiting for the computer…';
+          ? last && last.point === null
+            ? t('The computer passed. Your turn ({color})', { color: stoneNames.you })
+            : t('Your turn ({color})', { color: stoneNames.you })
+          : t('Waiting for the computer…');
 
   const goHome = () => void navigate(base);
 
@@ -329,7 +344,7 @@ export function PlayScreen() {
   const accept = () => void finishGame(game, gameResult(game, dead));
 
   return (
-    <Screen title="Game" back={{ to: base, label: 'Go' }}>
+    <Screen title={t('Game')} back={{ to: base, label: t('Go') }}>
       <p role="status" aria-live="polite" className="sr-only">
         {describeLastMove(game, human)}
       </p>
@@ -339,15 +354,19 @@ export function PlayScreen() {
           {statusText}
         </p>
         <p className="type-footnote text-muted tabular-nums">
-          Captured: {stoneNames.you} {human === BLACK ? prisoners.black : prisoners.white} ·{' '}
-          {stoneNames.computer} {human === BLACK ? prisoners.white : prisoners.black}
+          {t('Captured: {you} {youCount} · {computer} {computerCount}', {
+            you: stoneNames.you,
+            youCount: human === BLACK ? prisoners.black : prisoners.white,
+            computer: stoneNames.computer,
+            computerCount: human === BLACK ? prisoners.white : prisoners.black,
+          })}
         </p>
       </div>
 
       <div className="overflow-x-auto overscroll-contain rounded-xl">
         <GoBoard
           board={game.board}
-          label={`${size} by ${size} Go board`}
+          label={t('{size} by {size} Go board', { size })}
           starPoints={starPoints(size)}
           lastMove={lastPoint}
           koPoint={status === 'playing' && game.ko >= 0 ? game.ko : null}
@@ -370,7 +389,7 @@ export function PlayScreen() {
         <div className="mt-4 space-y-2">
           {pending !== null && (
             <Button fullWidth onClick={() => place(pending)}>
-              Place stone at {pointName(size, pending)}
+              {t('Place stone at {point}', { point: pointName(size, pending) })}
             </Button>
           )}
           <div className="grid grid-cols-3 gap-2">
@@ -384,7 +403,7 @@ export function PlayScreen() {
                 if (next.ok) setGame(next.state);
               }}
             >
-              Pass
+              {t('Pass')}
             </Button>
             <Button
               variant="secondary"
@@ -398,15 +417,15 @@ export function PlayScreen() {
               }}
             >
               <Icon name="refresh" size={16} />
-              Undo
+              {t('Undo')}
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setConfirmResign(true)}>
-              Resign
+              {t('Resign')}
             </Button>
           </div>
           {size > 9 && (
             <Button variant="ghost" size="sm" fullWidth onClick={() => setZoomed((z) => !z)}>
-              {zoomed ? 'Zoom out' : 'Zoom in'}
+              {zoomed ? t('Zoom out') : t('Zoom in')}
             </Button>
           )}
         </div>
@@ -415,21 +434,21 @@ export function PlayScreen() {
       {status === 'scoring' && owner && (
         <Card className="mt-4" aria-labelledby="score-heading" role="region">
           <h2 id="score-heading" className="type-title-2">
-            Scoring
+            {t('Scoring')}
           </h2>
           <table className="mt-3 w-full type-subhead tabular-nums">
             <thead>
               <tr className="text-left text-muted">
-                <th className="font-medium">Area scoring</th>
-                <th className="text-right font-medium">Stones</th>
-                <th className="text-right font-medium">Territory</th>
-                <th className="text-right font-medium">Total</th>
+                <th className="font-medium">{t('Area scoring')}</th>
+                <th className="text-right font-medium">{t('Stones')}</th>
+                <th className="text-right font-medium">{t('Territory')}</th>
+                <th className="text-right font-medium">{t('Total')}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <th scope="row" className="text-left font-medium">
-                  Black
+                  {t('Black')}
                 </th>
                 <td className="text-right">{owner.blackStones}</td>
                 <td className="text-right">{owner.blackTerritory}</td>
@@ -437,7 +456,7 @@ export function PlayScreen() {
               </tr>
               <tr>
                 <th scope="row" className="text-left font-medium">
-                  White (+{owner.komi} komi)
+                  {t('White (+{komi} komi)', { komi: owner.komi })}
                 </th>
                 <td className="text-right">{owner.whiteStones}</td>
                 <td className="text-right">{owner.whiteTerritory}</td>
@@ -446,19 +465,18 @@ export function PlayScreen() {
             </tbody>
           </table>
           <p className={cn('mt-3 type-headline')}>
-            {gameResult(game, dead).text}
             {owner.winner === 'draw'
-              ? ''
+              ? resultNotation(gameResult(game, dead).text)
               : owner.winner === human
-                ? ' (you win)'
-                : ' (computer wins)'}
+                ? t('{result} (you win)', { result: gameResult(game, dead).text })
+                : t('{result} (computer wins)', { result: gameResult(game, dead).text })}
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <Button variant="secondary" onClick={runAutoMark}>
-              Auto-mark dead stones (estimate)
+              {t('Auto-mark dead stones (estimate)')}
             </Button>
             <Button variant="secondary" onClick={() => setDead(new Set())}>
-              Clear marks
+              {t('Clear marks')}
             </Button>
             <Button
               variant="secondary"
@@ -467,34 +485,39 @@ export function PlayScreen() {
                 setGame(resumePlay(game));
               }}
             >
-              Resume play
+              {t('Resume play')}
             </Button>
-            <Button onClick={accept}>Accept result</Button>
+            <Button onClick={accept}>{t('Accept result')}</Button>
           </div>
           <p className="mt-3 type-footnote text-muted">
-            Dead stones are removed, then each side counts its stones and the empty points only it
-            touches. Auto-mark is a random-playout guess: check it before accepting.
+            {t(
+              'Dead stones are removed, then each side counts its stones and the empty points only it touches. Auto-mark is a random-playout guess: check it before accepting.',
+            )}
           </p>
         </Card>
       )}
 
       <details className="mt-4 rounded-2xl border border-border bg-surface p-4">
-        <summary className="cursor-pointer type-subhead font-medium">Move list</summary>
+        <summary className="cursor-pointer type-subhead font-medium">{t('Move list')}</summary>
         <ol className="mt-2 space-y-0.5 type-footnote text-muted tabular-nums">
           {game.moves.map((m, i) => (
             <li key={i}>
-              {i + 1}. {colorLabel(m.color)} {m.point === null ? 'pass' : pointName(size, m.point)}
+              {t('{n}. {color} {move}', {
+                n: i + 1,
+                color: colorName(m.color),
+                move: m.point === null ? t('pass') : pointName(size, m.point),
+              })}
             </li>
           ))}
-          {game.moves.length === 0 && <li>No moves yet.</li>}
+          {game.moves.length === 0 && <li>{t('No moves yet.')}</li>}
         </ol>
       </details>
 
       <ConfirmDialog
         open={confirmResign}
-        title="Resign this game?"
-        message="You lose the game and it will not be recorded."
-        confirmLabel="Resign"
+        title={t('Resign this game?')}
+        message={t('You lose the game and it will not be recorded.')}
+        confirmLabel={t('Resign')}
         destructive
         onConfirm={() => void doResign()}
         onCancel={() => setConfirmResign(false)}

@@ -11,6 +11,7 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { newId } from '@/core/ids';
 import { systemClock } from '@/core/time/clock';
 import { getDb } from '@/db/boot';
+import { t } from '@/i18n/core';
 import { clearDraft, saveDraft, type GoDraft } from '../data/goDraft';
 import type { Level } from '../domain/ai';
 import type { BoardSize } from '../domain/board';
@@ -19,6 +20,7 @@ import { randomSeed } from '../domain/rng';
 import { breakdown, describeResult, type Tally } from '../domain/stats';
 import { TSUMEGO_PROBLEMS } from '../domain/tsumego';
 import { useGoContext, useGoDraft, useGoGames, usePuzzleProgress } from './hooks';
+import { levelLabel } from './labels';
 
 const SIZE_OPTIONS = [
   { value: '9', label: '9×9' },
@@ -26,23 +28,16 @@ const SIZE_OPTIONS = [
   { value: '19', label: '19×19' },
 ] as const;
 
-const LEVEL_OPTIONS = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'hard', label: 'Hard' },
-] as const;
-
-const COLOR_OPTIONS = [
-  { value: 'black', label: 'Black (first)' },
-  { value: 'white', label: 'White' },
-] as const;
-
-const LEVEL_LABEL: Record<Level, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
-
-const tallyText = (t: Tally): string =>
-  t.games === 0
-    ? 'No games yet'
-    : `${t.wins} won · ${t.losses} lost${t.draws > 0 ? ` · ${t.draws} drawn` : ''}`;
+const tallyText = (tally: Tally): string =>
+  tally.games === 0
+    ? t('No games yet')
+    : tally.draws > 0
+      ? t('{wins} won · {losses} lost · {draws} drawn', {
+          wins: tally.wins,
+          losses: tally.losses,
+          draws: tally.draws,
+        })
+      : t('{wins} won · {losses} lost', { wins: tally.wins, losses: tally.losses });
 
 export function GoHome() {
   const { base, practice } = useGoContext();
@@ -93,29 +88,40 @@ export function GoHome() {
     await clearDraft(getDb());
   };
 
+  const levelOptions = [
+    { value: 'easy', label: t('Easy') },
+    { value: 'medium', label: t('Medium') },
+    { value: 'hard', label: t('Hard') },
+  ] as const;
+  const colorOptions = [
+    { value: 'black', label: t('Black (first)') },
+    { value: 'white', label: t('White') },
+  ] as const;
+
   const stats = games ? breakdown(games) : null;
   const solved = progress ? [...progress.values()].filter((p) => p.solved === 1).length : 0;
 
   return (
-    <Screen title="Go" back={{ to: practice, label: 'Practice' }}>
+    <Screen title={t('Go')} back={{ to: practice, label: t('Practice') }}>
       {draft && (
         <Card className="mb-4" aria-labelledby="resume-heading" role="region">
           <h2 id="resume-heading" className="type-title-2">
-            Game in progress
+            {t('Game in progress')}
           </h2>
           <p className="mt-1 type-subhead text-muted">
-            {draft.config.size}×{draft.config.size} · {LEVEL_LABEL[draft.level]} · you are{' '}
-            {draft.humanColor} · {draft.moves.length} moves played
+            {draft.config.size}×{draft.config.size} · {levelLabel(draft.level)} ·{' '}
+            {draft.humanColor === 'white' ? t('you are white') : t('you are black')} ·{' '}
+            {t('{count} moves played', { count: draft.moves.length })}
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <Link
               to={`${base}/play`}
               className="inline-flex min-h-[50px] items-center justify-center rounded-xl bg-accent px-5 type-headline text-on-accent active:scale-[0.98] active:opacity-80"
             >
-              Resume game
+              {t('Resume game')}
             </Link>
             <Button variant="ghost" onClick={() => setConfirmDiscard(true)}>
-              Discard it
+              {t('Discard it')}
             </Button>
           </div>
         </Card>
@@ -123,54 +129,54 @@ export function GoHome() {
 
       <Card aria-labelledby="new-heading" role="region">
         <h2 id="new-heading" className="type-title-2">
-          New game
+          {t('New game')}
         </h2>
         <div className="mt-4 space-y-4">
-          <Field label="Board">
+          <Field label={t('Board')}>
             <SegmentedControl
-              label="Board size"
+              label={t('Board size')}
               options={SIZE_OPTIONS}
               value={String(size) as '9' | '13' | '19'}
               onChange={(v) => changeSize(Number(v) as BoardSize)}
             />
           </Field>
-          <Field label="Opponent">
+          <Field label={t('Opponent')}>
             <SegmentedControl
-              label="Opponent level"
-              options={LEVEL_OPTIONS}
+              label={t('Opponent level')}
+              options={levelOptions}
               value={level}
               onChange={setLevel}
             />
           </Field>
-          <Field label="You play">
+          <Field label={t('You play')}>
             <SegmentedControl
-              label="Your colour"
-              options={COLOR_OPTIONS}
+              label={t('Your colour')}
+              options={colorOptions}
               value={color}
               onChange={setColor}
             />
           </Field>
           <div className="flex items-center justify-between gap-3">
-            <span className="type-body">Handicap</span>
+            <span className="type-body">{t('Handicap')}</span>
             <NumberStepper
-              label="Handicap"
+              label={t('Handicap')}
               value={handicap}
               min={0}
               max={maxHandicap(size)}
               step={1}
-              format={(v) => (v === 0 ? 'None' : `${v} stones`)}
+              format={(v) => (v === 0 ? t('None') : t('{count} stones', { count: v }))}
               onChange={changeHandicap}
             />
           </div>
           <div className="flex items-center justify-between gap-3">
-            <span className="type-body">Komi</span>
+            <span className="type-body">{t('Komi')}</span>
             <NumberStepper
-              label="Komi"
+              label={t('Komi')}
               value={komi}
               min={0.5}
               max={20.5}
               step={1}
-              format={(v) => `${v} pts`}
+              format={(v) => t('{count} pts', { count: v })}
               onChange={(v) => {
                 setKomi(v);
                 setKomiEdited(true);
@@ -178,31 +184,34 @@ export function GoHome() {
             />
           </div>
           <p className="type-footnote text-muted">
-            Area (Chinese) scoring. White moves first when Black has handicap stones. The computer
-            is a beginner-level engine: roughly 25 to 15 kyu at best on 9×9, weaker on larger
-            boards. These are estimates, not a rating.
+            {t(
+              'Area (Chinese) scoring. White moves first when Black has handicap stones. The computer is a beginner-level engine: roughly 25 to 15 kyu at best on 9×9, weaker on larger boards. These are estimates, not a rating.',
+            )}
           </p>
           <Button fullWidth onClick={() => (draft ? setConfirmReplace(true) : void start())}>
-            Start game
+            {t('Start game')}
           </Button>
         </div>
       </Card>
 
-      <Section title="Tsumego">
+      <Section title={t('Tsumego')}>
         <ListRow
-          title="Life-and-death problems"
-          subtitle={`${solved} of ${TSUMEGO_PROBLEMS.length} solved`}
+          title={t('Life-and-death problems')}
+          subtitle={t('{solved} of {total} solved', {
+            solved,
+            total: TSUMEGO_PROBLEMS.length,
+          })}
           icon="target"
           iconColor="var(--accent)"
           to={`${base}/tsumego`}
         />
       </Section>
 
-      <Section title="Your record">
+      <Section title={t('Your record')}>
         {stats && games && games.length > 0 ? (
           <>
             {stats.byLevel.map(({ level: l, tally }) => (
-              <ListRow key={l} title={LEVEL_LABEL[l]} subtitle={tallyText(tally)} />
+              <ListRow key={l} title={levelLabel(l)} subtitle={tallyText(tally)} />
             ))}
             {stats.bySize.map(({ size: s, tally }) => (
               <ListRow key={s} title={`${s}×${s}`} subtitle={tallyText(tally)} />
@@ -211,18 +220,18 @@ export function GoHome() {
         ) : (
           <EmptyState
             icon="stones"
-            title="No finished games yet"
-            description="Finish a game of at least five moves to see your record."
+            title={t('No finished games yet')}
+            description={t('Finish a game of at least five moves to see your record.')}
           />
         )}
       </Section>
 
       {games && games.length > 0 && (
-        <Section title="Recent games">
+        <Section title={t('Recent games')}>
           {games.slice(0, 5).map((g) => (
             <ListRow
               key={g.id}
-              title={`${g.size}×${g.size} · ${LEVEL_LABEL[g.level]} · ${g.color === 'black' ? 'Black' : 'White'}`}
+              title={`${g.size}×${g.size} · ${levelLabel(g.level)} · ${g.color === 'black' ? t('Black') : t('White')}`}
               subtitle={describeResult(g)}
             />
           ))}
@@ -231,18 +240,18 @@ export function GoHome() {
 
       <ConfirmDialog
         open={confirmReplace}
-        title="Start a new game?"
-        message="The game in progress will be deleted. It will not be recorded."
-        confirmLabel="Start new game"
+        title={t('Start a new game?')}
+        message={t('The game in progress will be deleted. It will not be recorded.')}
+        confirmLabel={t('Start new game')}
         destructive
         onConfirm={() => void start()}
         onCancel={() => setConfirmReplace(false)}
       />
       <ConfirmDialog
         open={confirmDiscard}
-        title="Discard this game?"
-        message="The game in progress will be deleted. It will not be recorded."
-        confirmLabel="Discard"
+        title={t('Discard this game?')}
+        message={t('The game in progress will be deleted. It will not be recorded.')}
+        confirmLabel={t('Discard')}
         destructive
         onConfirm={() => void discard()}
         onCancel={() => setConfirmDiscard(false)}

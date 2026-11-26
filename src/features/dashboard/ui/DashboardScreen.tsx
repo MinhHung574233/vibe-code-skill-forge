@@ -17,6 +17,7 @@ import {
 import { toLocalDate } from '@/core/time/localDate';
 import { tipForDate } from '@/features/tools/domain/tips';
 import { useNow } from '@/hooks/useNow';
+import { intlLocale, t } from '@/i18n/core';
 import { SessionList } from '@/features/training/ui/SessionList';
 import { useOverview, useRecentSessions, useSkills } from '@/features/training/ui/useTraining';
 
@@ -24,7 +25,7 @@ const LINK_BUTTON =
   'inline-flex min-h-[50px] w-full items-center justify-center rounded-xl bg-accent px-5 type-headline text-on-accent transition-[transform,opacity] duration-100 active:scale-[0.98] active:opacity-80';
 
 function formatToday(now: number): string {
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(intlLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -72,10 +73,10 @@ export function DashboardScreen() {
   const streak = overview?.streak;
 
   return (
-    <Screen title="Home">
+    <Screen title={t('Home')}>
       <p className="-mt-1 mb-3 px-1 type-subhead text-muted">{formatToday(now)}</p>
 
-      <div className="mb-3 flex flex-wrap gap-2" aria-label="Your status">
+      <div className="mb-3 flex flex-wrap gap-2" aria-label={t('Your status')}>
         <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-surface px-3 type-subhead font-medium">
           <Icon
             name="flame"
@@ -85,12 +86,12 @@ export function DashboardScreen() {
           {streak === undefined
             ? '…'
             : streak.current > 0
-              ? `${streak.current}-day streak`
-              : 'No streak yet'}
+              ? t('{n}-day streak', { n: streak.current })
+              : t('No streak yet')}
         </span>
         <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-surface px-3 type-subhead font-medium">
           <Icon name="bolt" size={16} className="text-xp" />
-          {overview ? `Level ${overview.level.level}` : '…'}
+          {overview ? t('Level {level}', { level: overview.level.level }) : '…'}
         </span>
       </div>
 
@@ -99,7 +100,7 @@ export function DashboardScreen() {
           {overview === undefined ? (
             <Skeleton className="size-24 rounded-full" />
           ) : (
-            <ProgressRing value={overview.goalFraction} label="Daily training goal">
+            <ProgressRing value={overview.goalFraction} label={t('Daily training goal')}>
               <span className="type-headline tabular-nums">
                 {Math.floor(overview.todayMinutes)}/{overview.goalMinutes}
               </span>
@@ -107,48 +108,60 @@ export function DashboardScreen() {
           )}
           <div className="min-w-0 flex-1">
             <h2 id="today-heading" className="type-title-2">
-              Today
+              {t('Today')}
             </h2>
             <p className="mt-0.5 type-subhead text-muted">
               {overview === undefined
-                ? 'Loading…'
+                ? t('Loading…')
                 : overview.todayMinutes === 0
-                  ? `No training yet. Your goal is ${overview.goalMinutes} min a day.`
+                  ? t('No training yet. Your goal is {goal} min a day.', {
+                      goal: overview.goalMinutes,
+                    })
                   : overview.todayMinutes >= overview.goalMinutes
-                    ? `Goal reached: ${formatMinutes(overview.todayMinutes)} today.`
-                    : `${formatMinutes(overview.todayMinutes)} of ${overview.goalMinutes} min.`}
+                    ? t('Goal reached: {time} today.', {
+                        time: formatMinutes(overview.todayMinutes),
+                      })
+                    : t('{time} of {goal} min.', {
+                        time: formatMinutes(overview.todayMinutes),
+                        goal: overview.goalMinutes,
+                      })}
             </p>
             {streak?.atRisk && (
-              <p className="mt-1 type-footnote text-warning">Train today to keep your streak.</p>
+              <p className="mt-1 type-footnote text-warning">
+                {t('Train today to keep your streak.')}
+              </p>
             )}
           </div>
         </div>
         <Link to="/practice/session" className={`${LINK_BUTTON} mt-4`}>
-          Start a session
+          {t('Start a session')}
         </Link>
       </Card>
 
       {overview && (
         <Card className="mt-3">
           <div className="flex items-baseline justify-between">
-            <p className="type-headline">Level {overview.level.level}</p>
+            <p className="type-headline">{t('Level {level}', { level: overview.level.level })}</p>
             <p className="type-footnote tabular-nums text-muted">
               {overview.level.xpForNextLevel > 0
-                ? `${overview.level.xpIntoLevel} / ${overview.level.xpForNextLevel} XP`
-                : `${overview.level.totalXp} XP`}
+                ? t('{into} / {span} XP', {
+                    into: overview.level.xpIntoLevel,
+                    span: overview.level.xpForNextLevel,
+                  })
+                : t('{xp} XP', { xp: overview.level.totalXp })}
             </p>
           </div>
           <div className="mt-2">
             <ProgressBar
               value={overview.level.fraction}
               color="var(--xp)"
-              label="Progress to next level"
+              label={t('Progress to next level')}
             />
           </div>
         </Card>
       )}
 
-      <Section title="Next up">
+      <Section title={t('Next up')}>
         {recommendations === undefined ? (
           <div className="space-y-2 p-4" aria-busy="true">
             <Skeleton className="h-5 w-2/3" />
@@ -157,8 +170,8 @@ export function DashboardScreen() {
         ) : recommendations.length === 0 ? (
           <EmptyState
             icon="check"
-            title="You are on track"
-            description="Nothing needs your attention right now."
+            title={t('You are on track')}
+            description={t('Nothing needs your attention right now.')}
           />
         ) : (
           recommendations.map((r) => (
@@ -183,17 +196,17 @@ export function DashboardScreen() {
         )}
       </Section>
 
-      <Section title="Developer tip of the day">
+      <Section title={t('Developer tip of the day')}>
         <ListRow
-          title={dailyTip.title}
-          subtitle={dailyTip.text}
+          title={t(dailyTip.title)}
+          subtitle={t(dailyTip.text)}
           icon="terminal"
           iconColor="#14b8a6"
           to="/practice/tools"
         />
       </Section>
 
-      <Section title="Your skills">
+      <Section title={t('Your skills')}>
         {skills === undefined || overview === undefined ? (
           <div className="space-y-2 p-4" aria-busy="true">
             <Skeleton className="h-5 w-1/2" />
@@ -202,14 +215,14 @@ export function DashboardScreen() {
         ) : skills.length === 0 ? (
           <EmptyState
             icon="star"
-            title="No skills yet"
-            description="Add the skills you practise to track time and goals for each."
+            title={t('No skills yet')}
+            description={t('Add the skills you practise to track time and goals for each.')}
             action={
               <Link
                 to="/skills"
                 className="inline-flex min-h-[44px] items-center rounded-xl bg-accent-soft px-4 type-headline text-accent"
               >
-                Add skills
+                {t('Add skills')}
               </Link>
             }
           />
@@ -225,16 +238,19 @@ export function DashboardScreen() {
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="min-w-0 break-words type-body">{s.name}</span>
                   <span className="shrink-0 type-footnote tabular-nums text-muted">
-                    {formatMinutes(minutes)}
-                    {s.weeklyGoalMinutes ? ` / ${formatMinutes(s.weeklyGoalMinutes)}` : ''} this
-                    week
+                    {s.weeklyGoalMinutes
+                      ? t('{done} / {goal} this week', {
+                          done: formatMinutes(minutes),
+                          goal: formatMinutes(s.weeklyGoalMinutes),
+                        })
+                      : t('{done} this week', { done: formatMinutes(minutes) })}
                   </span>
                 </div>
                 {s.weeklyGoalMinutes ? (
                   <div className="mt-2">
                     <ProgressBar
                       value={minutes / s.weeklyGoalMinutes}
-                      label={`${s.name} weekly goal`}
+                      label={t('{name} weekly goal', { name: s.name })}
                     />
                   </div>
                 ) : null}
@@ -244,7 +260,7 @@ export function DashboardScreen() {
         )}
       </Section>
 
-      <Section title="Recent activity">
+      <Section title={t('Recent activity')}>
         {recent === undefined ? (
           <div className="space-y-2 p-4" aria-busy="true">
             <Skeleton className="h-5 w-2/3" />
@@ -252,8 +268,8 @@ export function DashboardScreen() {
         ) : recent.length === 0 ? (
           <EmptyState
             icon="clock"
-            title="No activity yet"
-            description="Finished sessions show up here, newest first."
+            title={t('No activity yet')}
+            description={t('Finished sessions show up here, newest first.')}
           />
         ) : (
           <SessionList sessions={recent} skillNames={skillNames} today={overview?.today ?? ''} />

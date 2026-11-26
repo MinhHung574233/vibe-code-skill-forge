@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router';
 import { Icon } from '@/components/Icon';
+import { t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
 import { StatusBanners } from './StatusBanners';
 import { TABS } from './tabs';
@@ -23,7 +24,7 @@ export function TabLayout() {
         <Outlet />
       </main>
       <nav
-        aria-label="Primary"
+        aria-label={t('Primary')}
         className="border-t border-border bg-surface/90 backdrop-blur"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}
       >
@@ -41,7 +42,7 @@ export function TabLayout() {
                 }
               >
                 <Icon name={tab.icon} size={26} />
-                <span>{tab.label}</span>
+                <span>{t(tab.label)}</span>
               </NavLink>
             </li>
           ))}

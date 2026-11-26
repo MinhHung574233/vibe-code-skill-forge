@@ -9,6 +9,8 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { CURRENT_SCHEMA_VERSION } from '@/db/schema';
 import { resetAllData } from '@/db/recovery';
 import { useNow } from '@/hooks/useNow';
+import { t, type LanguagePreference } from '@/i18n/core';
+import { useLanguagePreference } from '@/i18n/react';
 import { detectIos, isStandalone } from '@/pwa/install';
 import type { OfflineReadiness } from '@/pwa/offlineReadiness';
 import { usePwaStore } from '@/pwa/pwaStore';
@@ -26,6 +28,13 @@ const THEME_OPTIONS: readonly { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
+/** Language names are shown in their own language so they can be found from any language. */
+const LANGUAGE_OPTIONS: readonly { value: LanguagePreference; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'en', label: 'English' },
+  { value: 'vi', label: 'Tiếng Việt' },
+];
+
 const STREAK_OPTIONS = [
   { value: 'any_session', label: 'Any session' },
   { value: 'goal_met', label: 'Goal reached' },
@@ -34,30 +43,39 @@ const STREAK_OPTIONS = [
 function readinessView(r: OfflineReadiness): { text: string; sub?: string; tone: BadgeTone } {
   switch (r.state) {
     case 'ready':
-      return { text: 'Ready offline', sub: `${r.expected} files saved`, tone: 'success' };
+      return {
+        text: t('Ready offline'),
+        sub: t('{n} files saved', { n: r.expected }),
+        tone: 'success',
+      };
     case 'incomplete':
       return {
-        text: 'Incomplete',
-        sub: `${r.missing} of ${r.expected} files missing`,
+        text: t('Incomplete'),
+        sub: t('{missing} of {expected} files missing', {
+          missing: r.missing,
+          expected: r.expected,
+        }),
         tone: 'warning',
       };
     case 'checking':
-      return { text: 'Checking…', tone: 'neutral' };
+      return { text: t('Checking…'), tone: 'neutral' };
     case 'repairing':
-      return { text: 'Repairing…', tone: 'neutral' };
+      return { text: t('Repairing…'), tone: 'neutral' };
     case 'unavailable':
       return {
-        text: 'Not available here',
-        sub: 'Offline mode works in the installed, hosted app',
+        text: t('Not available here'),
+        sub: t('Offline mode works in the installed, hosted app'),
         tone: 'neutral',
       };
     case 'unknown':
-      return { text: 'Not checked yet', tone: 'neutral' };
+      return { text: t('Not checked yet'), tone: 'neutral' };
   }
 }
 
 export function SettingsScreen() {
   const { preference, setPreference } = useThemeStore();
+  const { preference: languagePreference, setPreference: setLanguagePreference } =
+    useLanguagePreference();
   const readiness = usePwaStore((s) => s.readiness);
   const checkReadiness = usePwaStore((s) => s.checkReadiness);
   const repairReadiness = usePwaStore((s) => s.repairReadiness);
@@ -86,53 +104,69 @@ export function SettingsScreen() {
 
   const persistence: { text: string; tone: BadgeTone } =
     storage.persisted === true
-      ? { text: 'Granted', tone: 'success' }
+      ? { text: t('Granted'), tone: 'success' }
       : storage.persisted === false
-        ? { text: 'Not granted', tone: 'warning' }
-        : { text: 'Unknown', tone: 'neutral' };
+        ? { text: t('Not granted'), tone: 'warning' }
+        : { text: t('Unknown'), tone: 'neutral' };
 
   return (
-    <Screen title="Settings">
-      <Section title="Appearance">
+    <Screen title={t('Settings')}>
+      <Section title={t('Appearance')}>
         <div className="p-4">
           <SegmentedControl
-            label="Theme"
-            options={THEME_OPTIONS}
+            label={t('Theme')}
+            options={THEME_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
             value={preference}
             onChange={setPreference}
           />
         </div>
       </Section>
 
+      <Section title={t('Language')}>
+        <div className="p-4">
+          <SegmentedControl
+            label={t('Language')}
+            // Language names stay in their own language (and 'English' is also the module name, which is translated).
+            options={LANGUAGE_OPTIONS.map((o) =>
+              o.value === 'auto' ? { ...o, label: t('Auto') } : o,
+            )}
+            value={languagePreference}
+            onChange={setLanguagePreference}
+          />
+        </div>
+      </Section>
+
       <Section
-        title="Training"
-        footer="Your goal appears on the Home screen. The streak rule decides which days count towards your streak."
+        title={t('Training')}
+        footer={t(
+          'Your goal appears on the Home screen. The streak rule decides which days count towards your streak.',
+        )}
       >
         <ListRow
-          title="Daily goal"
-          subtitle="Minutes per day"
+          title={t('Daily goal')}
+          subtitle={t('Minutes per day')}
           icon="target"
           iconColor="var(--accent)"
           accessory={
             dailyGoal === undefined ? undefined : (
               <NumberStepper
-                label="daily goal"
+                label={t('daily goal')}
                 value={dailyGoal}
                 min={5}
                 max={240}
                 step={5}
-                format={(v) => `${v} min`}
+                format={(v) => t('{v} min', { v })}
                 onChange={(v) => void settings.set('dailyGoalMinutes', v)}
               />
             )
           }
         />
         <div className="space-y-2 p-4">
-          <p className="type-body">Streak counts days with</p>
+          <p className="type-body">{t('Streak counts days with')}</p>
           {streakRule !== undefined && (
             <SegmentedControl
-              label="Streak rule"
-              options={STREAK_OPTIONS}
+              label={t('Streak rule')}
+              options={STREAK_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
               value={streakRule}
               onChange={(v) => void settings.set('streakRule', v)}
             />
@@ -141,15 +175,19 @@ export function SettingsScreen() {
       </Section>
 
       <Section
-        title="Offline"
-        footer="SkillForge works without internet once every file is saved on this device. iOS can remove saved files if the phone runs low on space; use Repair while online if this shows Incomplete."
+        title={t('Offline')}
+        footer={t(
+          'SkillForge works without internet once every file is saved on this device. iOS can remove saved files if the phone runs low on space; use Repair while online if this shows Incomplete.',
+        )}
       >
         <ListRow
           title={view.text}
           {...(view.sub ? { subtitle: view.sub } : {})}
           icon="check"
           iconColor="var(--success)"
-          accessory={<Badge tone={view.tone}>{view.tone === 'success' ? 'OK' : 'Status'}</Badge>}
+          accessory={
+            <Badge tone={view.tone}>{view.tone === 'success' ? t('OK') : t('Status')}</Badge>
+          }
         />
         <div className="flex gap-2 p-3">
           <Button
@@ -158,76 +196,81 @@ export function SettingsScreen() {
             disabled={busy}
             onClick={() => void checkReadiness()}
           >
-            Check again
+            {t('Check again')}
           </Button>
           {readiness.state === 'incomplete' && (
             <Button size="sm" loading={busy} onClick={() => void repairReadiness()}>
-              Repair
+              {t('Repair')}
             </Button>
           )}
         </div>
       </Section>
 
       <Section
-        title="Your data"
-        footer="Everything is stored only on this device. A backup file is the only way to recover your data if iOS clears the app’s storage, you delete the Home Screen icon, or you change phones."
+        title={t('Your data')}
+        footer={t(
+          'Everything is stored only on this device. A backup file is the only way to recover your data if iOS clears the app’s storage, you delete the Home Screen icon, or you change phones.',
+        )}
       >
         <ListRow
-          title="Last backup"
+          title={t('Last backup')}
           subtitle={
             lastBackupAt === undefined
-              ? 'Loading…'
+              ? t('Loading…')
               : lastBackupAt === null
-                ? 'Never'
+                ? t('Never')
                 : formatAgeDays(lastBackupAt, now)
           }
           icon="bookmark"
           iconColor="#0ea5e9"
         />
         <ListRow
-          title="Storage used"
+          title={t('Storage used')}
           subtitle={
             storage.usageBytes !== null && storage.quotaBytes !== null
-              ? `${formatBytes(storage.usageBytes)} of ${formatBytes(storage.quotaBytes)} available`
-              : 'Not reported by this browser'
+              ? t('{used} of {quota} available', {
+                  used: formatBytes(storage.usageBytes),
+                  quota: formatBytes(storage.quotaBytes),
+                })
+              : t('Not reported by this browser')
           }
           icon="grid"
           iconColor="#64748b"
         />
         <ListRow
-          title="Storage protection"
+          title={t('Storage protection')}
           subtitle={
             storage.persisted === null
-              ? 'iOS decides; this cannot be confirmed'
+              ? t('iOS decides; this cannot be confirmed')
               : standalone
-                ? 'Requested for the installed app'
-                : 'Install to the Home Screen first'
+                ? t('Requested for the installed app')
+                : t('Install to the Home Screen first')
           }
           icon="info"
           iconColor="#8b5cf6"
           accessory={<Badge tone={persistence.tone}>{persistence.text}</Badge>}
         />
         <div className="flex flex-col gap-2 p-3">
-          <Button onClick={() => setExportOpen(true)}>Back up my data</Button>
+          <Button onClick={() => setExportOpen(true)}>{t('Back up my data')}</Button>
           <BackupImport onImported={() => window.location.reload()} />
         </div>
       </Section>
 
       {!standalone && detectIos() && (
-        <Section title="Install">
+        <Section title={t('Install')}>
           <ListRow
-            title="Add to Home Screen"
-            subtitle="Required for reliable offline use"
+            title={t('Add to Home Screen')}
+            subtitle={t('Required for reliable offline use')}
             icon="plus"
             onClick={() => setCoachOpen(true)}
           />
         </Section>
       )}
 
-      <Section title="Danger zone">
+      <Section title={t('Danger zone')}>
         <div className="p-3">
           <Button variant="destructive" fullWidth onClick={() => setEraseOpen(true)}>
-            Erase all data on this device
+            {t('Erase all data on this device')}
           </Button>
           {eraseError && (
             <p role="alert" className="mt-2 type-subhead text-danger">
@@ -237,12 +280,20 @@ export function SettingsScreen() {
         </div>
       </Section>
 
-      <Section title="About">
-        <ListRow title="SkillForge" subtitle={`Version ${__APP_VERSION__}`} />
-        <ListRow title="Data format" subtitle={`Version ${CURRENT_SCHEMA_VERSION}`} />
+      <Section title={t('About')}>
         <ListRow
-          title="Privacy"
-          subtitle="No account, no tracking, no network requests. Your data leaves this device only when you export a backup."
+          title="SkillForge"
+          subtitle={t('Version {version}', { version: __APP_VERSION__ })}
+        />
+        <ListRow
+          title={t('Data format')}
+          subtitle={t('Version {version}', { version: CURRENT_SCHEMA_VERSION })}
+        />
+        <ListRow
+          title={t('Privacy')}
+          subtitle={t(
+            'No account, no tracking, no network requests. Your data leaves this device only when you export a backup.',
+          )}
         />
       </Section>
 
@@ -257,9 +308,11 @@ export function SettingsScreen() {
       />
       <ConfirmDialog
         open={eraseOpen}
-        title="Erase all data?"
-        message="Every skill, goal and setting stored by SkillForge on this device will be deleted, along with the safety copy. Back up first if you might want it back. This cannot be undone."
-        confirmLabel="Erase everything"
+        title={t('Erase all data?')}
+        message={t(
+          'Every skill, goal and setting stored by SkillForge on this device will be deleted, along with the safety copy. Back up first if you might want it back. This cannot be undone.',
+        )}
+        confirmLabel={t('Erase everything')}
         destructive
         onCancel={() => setEraseOpen(false)}
         onConfirm={() => {
@@ -267,7 +320,7 @@ export function SettingsScreen() {
           setEraseError(null);
           resetAllData()
             .then(() => window.location.reload())
-            .catch(() => setEraseError('Erasing failed. Nothing more was changed.'));
+            .catch(() => setEraseError(t('Erasing failed. Nothing more was changed.')));
         }}
       />
     </Screen>

@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import type { AppError } from '@/core/errors';
+import { t } from '@/i18n/core';
 import { toAppError } from './errors';
 import {
   countMarkerTables,
@@ -119,7 +120,7 @@ export async function bootDatabase(config: BootConfig = {}): Promise<BootOutcome
   if (!indexedDbAvailable) {
     return recovery(
       'unavailable',
-      'This browser is not allowing the app to store data on this device.',
+      t('This browser is not allowing the app to store data on this device.'),
       snapshotName,
     );
   }
@@ -132,7 +133,7 @@ export async function bootDatabase(config: BootConfig = {}): Promise<BootOutcome
       if (installed > target) {
         return recovery(
           'schema-too-new',
-          'Your data was saved by a newer version of SkillForge. Update the app to open it.',
+          t('Your data was saved by a newer version of SkillForge. Update the app to open it.'),
           snapshotName,
         );
       }
@@ -155,7 +156,7 @@ export async function bootDatabase(config: BootConfig = {}): Promise<BootOutcome
   } catch (cause) {
     return recovery(
       'open-failed',
-      'The saved data could not be inspected.',
+      t('The saved data could not be inspected.'),
       snapshotName,
       toAppError(cause),
     );
@@ -177,8 +178,8 @@ export async function bootDatabase(config: BootConfig = {}): Promise<BootOutcome
     return recovery(
       upgrading ? 'migration-failed' : 'open-failed',
       upgrading
-        ? 'The update could not convert your saved data. Your data has not been changed.'
-        : 'The saved data could not be opened.',
+        ? t('The update could not convert your saved data. Your data has not been changed.')
+        : t('The saved data could not be opened.'),
       snapshotName,
       toAppError(cause),
     );
@@ -191,7 +192,7 @@ export async function bootDatabase(config: BootConfig = {}): Promise<BootOutcome
       db.close();
       return recovery(
         'data-loss-suspected',
-        'Your saved data appears to be missing. iOS may have cleared this app’s storage.',
+        t('Your saved data appears to be missing. iOS may have cleared this app’s storage.'),
         snapshotName,
       );
     }
@@ -203,7 +204,7 @@ export async function bootDatabase(config: BootConfig = {}): Promise<BootOutcome
     db.close();
     return recovery(
       'open-failed',
-      'The saved data could not be read.',
+      t('The saved data could not be read.'),
       snapshotName,
       toAppError(cause),
     );

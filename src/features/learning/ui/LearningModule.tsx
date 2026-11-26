@@ -14,6 +14,7 @@ import { getDb } from '@/db/boot';
 import type { CompletionOutcome } from '@/features/training/domain/session';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import { useTrainingEngine } from '@/features/training/ui/useTraining';
+import { t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
 import { LessonService } from '../data/lessonService';
 import {
@@ -21,6 +22,7 @@ import {
   pathStatus,
   scoreQuiz,
   type Block,
+  type Level,
   type Lesson,
   type Path,
   type QuizResult,
@@ -39,7 +41,21 @@ export interface LearningConfig {
   extraRoutes?: ReactNode;
 }
 
-const PRACTICE_BACK = { to: '/practice', label: 'Practice' };
+/** Level labels, translated when shown (never at import). */
+function levelLabel(level: Level): string {
+  switch (level) {
+    case 'beginner':
+      return t('beginner');
+    case 'intermediate':
+      return t('intermediate');
+    case 'advanced':
+      return t('advanced');
+  }
+}
+
+function practiceBack() {
+  return { to: '/practice', label: t('Practice') };
+}
 
 function useLessonService(): LessonService {
   const engine = useTrainingEngine();
@@ -70,33 +86,38 @@ function LearningHome({ config }: { config: LearningConfig }) {
   const doneLessons = config.paths.reduce((n, p) => n + pathStatus(p, done).done, 0);
 
   return (
-    <Screen title={config.title} back={PRACTICE_BACK}>
+    <Screen title={t(config.title)} back={practiceBack()}>
       {config.intro}
       <Card className={config.intro ? 'mt-4' : ''}>
-        <p className="type-subhead text-muted">Your progress</p>
+        <p className="type-subhead text-muted">{t('Your progress')}</p>
         <p className="type-title-2 tabular-nums">
-          {doneLessons} of {totalLessons} lessons
+          {t('{done} of {total} lessons', { done: doneLessons, total: totalLessons })}
         </p>
         <div className="mt-2">
           <ProgressBar
             value={totalLessons === 0 ? 0 : doneLessons / totalLessons}
-            label={`${doneLessons} of ${totalLessons} lessons completed`}
+            label={t('{done} of {total} lessons completed', {
+              done: doneLessons,
+              total: totalLessons,
+            })}
           />
         </div>
       </Card>
       <Section
-        title="Learning paths"
-        footer="Pass each lesson’s 3-question quiz (2 correct) to complete it."
+        title={t('Learning paths')}
+        footer={t('Pass each lesson’s 3-question quiz (2 correct) to complete it.')}
       >
         {config.paths.map((path) => {
           const status = pathStatus(path, done);
           return (
             <ListRow
               key={path.id}
-              title={path.title}
-              subtitle={`${status.done} of ${status.total} lessons · ${path.level}`}
+              title={t(path.title)}
+              subtitle={`${t('{done} of {total} lessons', { done: status.done, total: status.total })} · ${levelLabel(path.level)}`}
               to={`${config.basePath}/path/${path.id}`}
-              accessory={status.complete ? <Badge tone="success">Complete</Badge> : undefined}
+              accessory={
+                status.complete ? <Badge tone="success">{t('Complete')}</Badge> : undefined
+              }
             />
           );
         })}
@@ -111,11 +132,11 @@ function PathScreen({ config }: { config: LearningConfig }) {
   const path = config.paths.find((p) => p.id === pathId);
   if (!path) {
     return (
-      <Screen title="Path" back={{ to: config.basePath, label: config.title }}>
+      <Screen title={t('Path')} back={{ to: config.basePath, label: t(config.title) }}>
         <EmptyState
           icon="info"
-          title="Path not found"
-          description="This learning path does not exist."
+          title={t('Path not found')}
+          description={t('This learning path does not exist.')}
         />
       </Screen>
     );
@@ -123,22 +144,25 @@ function PathScreen({ config }: { config: LearningConfig }) {
   const done = completed ?? new Set<string>();
   const status = pathStatus(path, done);
   return (
-    <Screen title={path.title} back={{ to: config.basePath, label: config.title }}>
-      <p className="px-1 type-body text-muted">{path.summary}</p>
+    <Screen title={t(path.title)} back={{ to: config.basePath, label: t(config.title) }}>
+      <p className="px-1 type-body text-muted">{t(path.summary)}</p>
       <div className="mt-3 px-1">
         <ProgressBar
           value={status.total === 0 ? 0 : status.done / status.total}
-          label={`${status.done} of ${status.total} lessons completed`}
+          label={t('{done} of {total} lessons completed', {
+            done: status.done,
+            total: status.total,
+          })}
         />
       </div>
       <Section>
         {path.lessons.map((lesson, i) => (
           <ListRow
             key={lesson.id}
-            title={`${i + 1}. ${lesson.title}`}
-            subtitle={`${lesson.minutes} min · ${lesson.summary}`}
+            title={`${i + 1}. ${t(lesson.title)}`}
+            subtitle={`${t('{n} min', { n: lesson.minutes })} · ${t(lesson.summary)}`}
             to={`${config.basePath}/lesson/${lesson.id}`}
-            accessory={done.has(lesson.id) ? <Badge tone="success">Done</Badge> : undefined}
+            accessory={done.has(lesson.id) ? <Badge tone="success">{t('Done')}</Badge> : undefined}
           />
         ))}
       </Section>
@@ -149,31 +173,38 @@ function PathScreen({ config }: { config: LearningConfig }) {
 function BlockView({ block }: { block: Block }) {
   switch (block.kind) {
     case 'p':
-      return <p className="type-body">{block.text}</p>;
+      return <p className="type-body">{t(block.text)}</p>;
     case 'list':
       return (
         <ul className="list-disc space-y-1 pl-5 type-body">
           {block.items.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item}>{t(item)}</li>
           ))}
         </ul>
       );
     case 'code':
       return (
         <figure className="m-0">
-          <pre className="overflow-x-auto rounded-xl border border-border bg-surface p-3 font-mono text-[13px] leading-relaxed">
+          {/* Scrollable, so it must be reachable by keyboard and VoiceOver (axe: scrollable-region-focusable). */}
+          <pre
+            tabIndex={0}
+            aria-label={t('Code example')}
+            className="overflow-x-auto rounded-xl border border-border bg-surface p-3 font-mono text-[13px] leading-relaxed"
+          >
             <code>{block.code}</code>
           </pre>
           {block.caption && (
-            <figcaption className="mt-1 px-1 type-footnote text-muted">{block.caption}</figcaption>
+            <figcaption className="mt-1 px-1 type-footnote text-muted">
+              {t(block.caption)}
+            </figcaption>
           )}
         </figure>
       );
     case 'tip':
       return (
         <p className="rounded-xl bg-accent-soft p-3 type-subhead">
-          <span className="font-semibold">Tip: </span>
-          {block.text}
+          <span className="font-semibold">{t('Tip:')} </span>
+          {t(block.text)}
         </p>
       );
   }
@@ -186,15 +217,15 @@ function LessonScreen({ config }: { config: LearningConfig }) {
   const found = lessonId ? findLesson(config.paths, lessonId) : undefined;
   const back = {
     to: found ? `${config.basePath}/path/${found.path.id}` : config.basePath,
-    label: found?.path.title ?? config.title,
+    label: t(found?.path.title ?? config.title),
   };
   if (!found) {
     return (
-      <Screen title="Lesson" back={back}>
+      <Screen title={t('Lesson')} back={back}>
         <EmptyState
           icon="info"
-          title="Lesson not found"
-          description="This lesson does not exist."
+          title={t('Lesson not found')}
+          description={t('This lesson does not exist.')}
         />
       </Screen>
     );
@@ -263,10 +294,10 @@ function LessonView({
   };
 
   return (
-    <Screen title={lesson.title} back={back}>
+    <Screen title={t(lesson.title)} back={back}>
       {stage === 'read' && (
         <>
-          <p className="px-1 type-subhead text-muted">{lesson.minutes} min read</p>
+          <p className="px-1 type-subhead text-muted">{t('{n} min read', { n: lesson.minutes })}</p>
           <div className="mt-3 space-y-4">
             {lesson.blocks.map((block, i) => (
               <BlockView key={i} block={block} />
@@ -274,7 +305,7 @@ function LessonView({
           </div>
           <div className="mt-6">
             <Button fullWidth onClick={() => setStage('quiz')}>
-              Take the quiz
+              {t('Take the quiz')}
             </Button>
           </div>
         </>
@@ -287,7 +318,7 @@ function LessonView({
             return (
               <Card key={qi} role="group" aria-labelledby={`q-${qi}`}>
                 <h2 id={`q-${qi}`} className="type-headline">
-                  {qi + 1}. {question.prompt}
+                  {qi + 1}. {t(question.prompt)}
                 </h2>
                 <div className="mt-3 space-y-2" role="radiogroup" aria-labelledby={`q-${qi}`}>
                   {question.options.map((option, oi) => {
@@ -309,10 +340,10 @@ function LessonView({
                           showCorrect && 'border-success',
                         )}
                       >
-                        <span className="min-w-0 flex-1 break-words">{option}</span>
+                        <span className="min-w-0 flex-1 break-words">{t(option)}</span>
                         {showCorrect && (
                           <span className="ml-2 type-footnote font-medium text-success">
-                            Correct
+                            {t('Correct')}
                           </span>
                         )}
                       </button>
@@ -321,8 +352,8 @@ function LessonView({
                 </div>
                 {stage === 'result' && (
                   <p className="mt-3 type-subhead">
-                    <span className="font-semibold">{right ? 'Right. ' : 'Not quite. '}</span>
-                    {question.explain}
+                    <span className="font-semibold">{right ? t('Right.') : t('Not quite.')} </span>
+                    {t(question.explain)}
                   </p>
                 )}
               </Card>
@@ -337,19 +368,24 @@ function LessonView({
 
           {stage === 'quiz' && (
             <Button fullWidth disabled={!allAnswered} loading={busy} onClick={() => void check()}>
-              {allAnswered ? 'Check answers' : 'Answer all 3 questions'}
+              {allAnswered ? t('Check answers') : t('Answer all 3 questions')}
             </Button>
           )}
 
           {stage === 'result' && result && (
             <Card>
               <h2 className="type-title-2" role="status">
-                {result.correct} of {result.total} correct
+                {t('{correct} of {total} correct', {
+                  correct: result.correct,
+                  total: result.total,
+                })}
               </h2>
               <p className="mt-1 type-body text-muted">
                 {result.passed
-                  ? 'Lesson complete.'
-                  : 'You need 2 correct answers to complete the lesson. Read it again and retry.'}
+                  ? t('Lesson complete.')
+                  : t(
+                      'You need 2 correct answers to complete the lesson. Read it again and retry.',
+                    )}
               </p>
               <div className="mt-4 flex flex-col gap-2">
                 {result.passed && nextLesson && (
@@ -357,15 +393,15 @@ function LessonView({
                     to={`${config.basePath}/lesson/${nextLesson.id}`}
                     className="inline-flex min-h-[50px] items-center justify-center rounded-xl bg-accent px-5 type-headline text-on-accent active:opacity-80"
                   >
-                    Next lesson
+                    {t('Next lesson')}
                   </Link>
                 )}
-                {!result.passed && <Button onClick={retry}>Try the quiz again</Button>}
+                {!result.passed && <Button onClick={retry}>{t('Try the quiz again')}</Button>}
                 <Link
                   to={back.to}
                   className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-accent-soft px-5 type-headline text-accent active:opacity-80"
                 >
-                  Back to {path.title}
+                  {t('Back to {title}', { title: t(path.title) })}
                 </Link>
               </div>
             </Card>

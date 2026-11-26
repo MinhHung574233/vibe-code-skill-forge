@@ -5,11 +5,13 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
+import { t } from '@/i18n/core';
 import { ListRow, Section } from '@/components/Section';
 import { OPENINGS, openingById, openingUci, type Opening } from '../domain/openings';
 import { checkedKingSquare, legalTargets, needsPromotion, replay } from '../domain/rules';
 import { ChessBoard, type BoardFeedback } from './ChessBoard';
 import { PromotionSheet } from './PromotionSheet';
+import { sideName } from './labels';
 import { CHESS_BASE } from './useChess';
 import type { PromotionPiece } from '../domain/rules';
 
@@ -18,17 +20,25 @@ const FEEDBACK_MS = 700;
 
 export function OpeningsList() {
   return (
-    <Screen title="Openings" back={{ to: CHESS_BASE, label: 'Chess' }}>
+    <Screen title={t('Openings')} back={{ to: CHESS_BASE, label: t('Chess') }}>
       <p className="type-subhead text-muted">
-        Play the main line move by move. The app plays the other side and tells you when you leave
-        the book.
+        {t(
+          'Play the main line move by move. The app plays the other side and tells you when you leave the book.',
+        )}
       </p>
-      <Section title="Lines" footer="Sound, commonly played lines, not a complete repertoire.">
+      <Section
+        title={t('Lines')}
+        footer={t('Sound, commonly played lines, not a complete repertoire.')}
+      >
         {OPENINGS.map((o) => (
           <ListRow
             key={o.id}
-            title={o.name}
-            subtitle={`${o.eco} · you play ${o.side === 'w' ? 'White' : 'Black'} · ${o.moves.length} moves`}
+            title={t(o.name)}
+            subtitle={t('{eco} · you play {color} · {n} moves', {
+              eco: o.eco,
+              color: sideName(o.side),
+              n: o.moves.length,
+            })}
             icon="book"
             iconColor="#64748b"
             to={`${CHESS_BASE}/openings/${o.id}`}
@@ -66,8 +76,11 @@ function OpeningDrill({ opening }: { opening: Opening }) {
   // the app plays the other side's book moves
   useEffect(() => {
     if (complete || learnersTurn) return;
-    const t = window.setTimeout(() => setStep((s) => s + 1), step === 0 ? 300 : OPPONENT_DELAY_MS);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(
+      () => setStep((s) => s + 1),
+      step === 0 ? 300 : OPPONENT_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
   }, [complete, learnersTurn, step]);
 
   const targetsFrom = useCallback((from: Square) => legalTargets(chess, from), [chess]);
@@ -81,7 +94,7 @@ function OpeningDrill({ opening }: { opening: Opening }) {
       setFeedback({ square: to, tone: 'good' });
     } else {
       setMistakes((m) => m + 1);
-      setMessage('That is not the book move here. Try again, or use a hint.');
+      setMessage(t('That is not the book move here. Try again, or use a hint.'));
       setFeedback({ square: to, tone: 'bad' });
     }
     window.setTimeout(() => setFeedback(null), FEEDBACK_MS);
@@ -100,13 +113,17 @@ function OpeningDrill({ opening }: { opening: Opening }) {
   const showHint = () => {
     const next = line[step];
     if (!next) return;
-    setHint(hint.length === 0 ? [next.slice(0, 2) as Square] : [next.slice(0, 2) as Square, next.slice(2, 4) as Square]);
+    setHint(
+      hint.length === 0
+        ? [next.slice(0, 2) as Square]
+        : [next.slice(0, 2) as Square, next.slice(2, 4) as Square],
+    );
   };
 
   const reveal = () => {
     setMistakes((m) => m + 1);
     setHint([]);
-    setMessage('Shown from the book. Play it next time without help.');
+    setMessage(t('Shown from the book. Play it next time without help.'));
     setStep((s) => s + 1);
   };
 
@@ -123,23 +140,24 @@ function OpeningDrill({ opening }: { opening: Opening }) {
     ? { from: lastUci.slice(0, 2) as Square, to: lastUci.slice(2, 4) as Square }
     : null;
   const sans = chess.history();
-  const lineText = sans
-    .map((san, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${san}` : san))
-    .join(' ');
+  const lineText = sans.map((san, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${san}` : san)).join(' ');
 
   return (
-    <Screen title={opening.name} back={{ to: `${CHESS_BASE}/openings`, label: 'Openings' }}>
+    <Screen title={t(opening.name)} back={{ to: `${CHESS_BASE}/openings`, label: t('Openings') }}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Badge>
-            {opening.eco} · you play {learner === 'w' ? 'White' : 'Black'}
+            {t('{eco} · you play {color}', { eco: opening.eco, color: sideName(learner) })}
           </Badge>
           <span className="type-subhead text-muted" aria-live="polite">
             {complete
-              ? 'Line complete'
+              ? t('Line complete')
               : learnersTurn
-                ? `Your move ${Math.min(done, learnerMoves)} of ${learnerMoves}`
-                : 'Opponent is moving…'}
+                ? t('Your move {done} of {total}', {
+                    done: Math.min(done, learnerMoves),
+                    total: learnerMoves,
+                  })
+                : t('Opponent is moving…')}
           </span>
         </div>
 
@@ -153,30 +171,39 @@ function OpeningDrill({ opening }: { opening: Opening }) {
           checkSquare={checkedKingSquare(chess)}
           hints={hint}
           feedback={feedback}
-          label="Opening board"
+          label={t('Opening board')}
         />
 
         <div role="status" aria-live="polite" className="min-h-[1.5rem]">
           {message && <p className="type-body text-danger">{message}</p>}
-          {!message && lastNote && <p className="type-body">{lastNote}</p>}
+          {!message && lastNote && <p className="type-body">{t(lastNote)}</p>}
         </div>
 
-        <p aria-label="Moves so far" className="min-h-[1.25rem] type-subhead tabular-nums text-muted">
+        <p
+          aria-label={t('Moves so far')}
+          className="min-h-[1.25rem] type-subhead tabular-nums text-muted"
+        >
           {lineText}
         </p>
 
         {complete ? (
           <Card role="region" aria-labelledby="done-title">
             <h2 id="done-title" className="type-title-2">
-              Line complete
+              {t('Line complete')}
             </h2>
             <p className="mt-1 type-subhead text-muted">
               {mistakes === 0
-                ? 'No mistakes or hints. Nicely drilled.'
-                : `${mistakes} slip${mistakes === 1 ? '' : 's'} or hint${mistakes === 1 ? '' : 's'} this time. Run it again to make it automatic.`}
+                ? t('No mistakes or hints. Nicely drilled.')
+                : mistakes === 1
+                  ? t('{n} slip or hint this time. Run it again to make it automatic.', {
+                      n: mistakes,
+                    })
+                  : t('{n} slips or hints this time. Run it again to make it automatic.', {
+                      n: mistakes,
+                    })}
             </p>
             <Button className="mt-3" fullWidth onClick={restart}>
-              Drill again
+              {t('Drill again')}
             </Button>
           </Card>
         ) : (
@@ -186,22 +213,22 @@ function OpeningDrill({ opening }: { opening: Opening }) {
               disabled={!learnersTurn || hint.length >= 2}
               onClick={showHint}
             >
-              {hint.length === 0 ? 'Hint' : 'More hint'}
+              {hint.length === 0 ? t('Hint') : t('More hint')}
             </Button>
             <Button variant="ghost" disabled={!learnersTurn} onClick={reveal}>
-              Show move
+              {t('Show move')}
             </Button>
           </div>
         )}
 
         <Card role="region" aria-labelledby="ideas-title">
           <h2 id="ideas-title" className="type-headline">
-            The ideas
+            {t('The ideas')}
           </h2>
-          <p className="mt-1 type-subhead text-muted">{opening.summary}</p>
+          <p className="mt-1 type-subhead text-muted">{t(opening.summary)}</p>
           <ul className="mt-3 list-disc space-y-1.5 pl-5 type-subhead">
             {opening.ideas.map((idea) => (
-              <li key={idea}>{idea}</li>
+              <li key={idea}>{t(idea)}</li>
             ))}
           </ul>
         </Card>

@@ -1,7 +1,9 @@
 import { Button } from '@/components/Button';
 import { Sheet } from '@/components/Sheet';
-import { BLACK, type Color } from '../domain/board';
+import { t } from '@/i18n/core';
+import type { Color } from '../domain/board';
 import type { GameResult } from '../domain/game';
+import { colorName } from './labels';
 
 interface ResultSheetProps {
   open: boolean;
@@ -16,13 +18,12 @@ interface ResultSheetProps {
 export function ResultSheet({ open, result, humanColor, recorded, onClose }: ResultSheetProps) {
   const title =
     !result || result.winner === 'draw'
-      ? 'Draw'
+      ? t('Draw')
       : result.winner === humanColor
-        ? 'You won'
-        : 'You lost';
+        ? t('You won')
+        : t('You lost');
   const score = result?.score;
-  const winnerName =
-    result && result.winner !== 'draw' ? (result.winner === BLACK ? 'Black' : 'White') : '';
+  const winnerName = result && result.winner !== 'draw' ? colorName(result.winner) : '';
 
   return (
     <Sheet open={open} onClose={onClose} title={title}>
@@ -30,25 +31,32 @@ export function ResultSheet({ open, result, humanColor, recorded, onClose }: Res
         <div className="space-y-4">
           <p className="type-headline">
             {result.by === 'resign'
-              ? `${winnerName} wins by resignation (${result.text})`
+              ? t('{winner} wins by resignation ({text})', {
+                  winner: winnerName,
+                  text: result.text,
+                })
               : result.winner === 'draw'
-                ? 'The game is a draw.'
-                : `${winnerName} wins by ${result.margin} points (${result.text})`}
+                ? t('The game is a draw.')
+                : t('{winner} wins by {margin} points ({text})', {
+                    winner: winnerName,
+                    margin: result.margin,
+                    text: result.text,
+                  })}
           </p>
           {score && (
             <table className="w-full type-subhead tabular-nums">
               <thead>
                 <tr className="text-left text-muted">
-                  <th className="font-medium">Area scoring</th>
-                  <th className="text-right font-medium">Stones</th>
-                  <th className="text-right font-medium">Territory</th>
-                  <th className="text-right font-medium">Total</th>
+                  <th className="font-medium">{t('Area scoring')}</th>
+                  <th className="text-right font-medium">{t('Stones')}</th>
+                  <th className="text-right font-medium">{t('Territory')}</th>
+                  <th className="text-right font-medium">{t('Total')}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <th scope="row" className="text-left font-medium">
-                    Black
+                    {t('Black')}
                   </th>
                   <td className="text-right">{score.blackStones}</td>
                   <td className="text-right">{score.blackTerritory}</td>
@@ -56,7 +64,7 @@ export function ResultSheet({ open, result, humanColor, recorded, onClose }: Res
                 </tr>
                 <tr>
                   <th scope="row" className="text-left font-medium">
-                    White + {score.komi} komi
+                    {t('White + {komi} komi', { komi: score.komi })}
                   </th>
                   <td className="text-right">{score.whiteStones}</td>
                   <td className="text-right">{score.whiteTerritory}</td>
@@ -67,11 +75,11 @@ export function ResultSheet({ open, result, humanColor, recorded, onClose }: Res
           )}
           {!recorded && (
             <p className="type-footnote text-muted">
-              This game was too short to be recorded (it needs at least five of your moves).
+              {t('This game was too short to be recorded (it needs at least five of your moves).')}
             </p>
           )}
           <Button fullWidth onClick={onClose}>
-            Continue
+            {t('Continue')}
           </Button>
         </div>
       )}

@@ -10,6 +10,7 @@ import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
 import { StatTile } from '@/components/StatTile';
 import { formatMinutes } from '@/core/training/analytics';
+import { t } from '@/i18n/core';
 import { SessionList } from '@/features/training/ui/SessionList';
 import {
   useOverview,
@@ -17,7 +18,7 @@ import {
   useSkillRepository,
   useSkillSessions,
 } from '@/features/training/ui/useTraining';
-import { CATEGORY_LABELS, PRIORITY_LABELS } from '../domain/skill';
+import { CATEGORY_LABELS, priorityText } from '../domain/skill';
 import { SkillFormSheet } from './SkillFormSheet';
 
 const LINK_BUTTON =
@@ -35,11 +36,15 @@ export function SkillDetailScreen() {
   const [error, setError] = useState<string | null>(null);
 
   if (skill === undefined)
-    return <Screen title="Skill" back={{ to: '/skills', label: 'Skills' }} />;
+    return <Screen title={t('Skill')} back={{ to: '/skills', label: t('Skills') }} />;
   if (skill === null) {
     return (
-      <Screen title="Skill" back={{ to: '/skills', label: 'Skills' }}>
-        <EmptyState icon="alert" title="Skill not found" description="It may have been deleted." />
+      <Screen title={t('Skill')} back={{ to: '/skills', label: t('Skills') }}>
+        <EmptyState
+          icon="alert"
+          title={t('Skill not found')}
+          description={t('It may have been deleted.')}
+        />
       </Screen>
     );
   }
@@ -54,53 +59,58 @@ export function SkillDetailScreen() {
   ) => {
     setError(null);
     const result = await action();
-    if (!result.ok) setError(result.error?.message ?? 'That did not work.');
+    if (!result.ok) setError(result.error?.message ?? t('That did not work.'));
     else after?.();
   };
 
   return (
-    <Screen title={skill.name} back={{ to: '/skills', label: 'Skills' }}>
+    <Screen title={skill.name} back={{ to: '/skills', label: t('Skills') }}>
       <div className="mb-4 flex flex-wrap gap-2">
-        <Badge>{CATEGORY_LABELS[skill.category]}</Badge>
-        <Badge>{PRIORITY_LABELS[skill.priority]} priority</Badge>
-        {skill.isArchived && <Badge tone="warning">Archived</Badge>}
+        <Badge>{t(CATEGORY_LABELS[skill.category])}</Badge>
+        <Badge>{priorityText(skill.priority)}</Badge>
+        {skill.isArchived && <Badge tone="warning">{t('Archived')}</Badge>}
       </div>
       {skill.description && (
         <p className="mb-4 break-words type-body text-muted">{skill.description}</p>
       )}
 
       <Card>
-        <p className="type-footnote text-muted">This week</p>
+        <p className="type-footnote text-muted">{t('This week')}</p>
         <p className="type-title-1 tabular-nums">{formatMinutes(week)}</p>
         {goal ? (
           <>
             <div className="mt-2">
-              <ProgressBar value={week / goal} label={`${skill.name} weekly goal`} />
+              <ProgressBar
+                value={week / goal}
+                label={t('{name} weekly goal', { name: skill.name })}
+              />
             </div>
-            <p className="mt-1.5 type-footnote text-muted">Goal {formatMinutes(goal)} a week</p>
+            <p className="mt-1.5 type-footnote text-muted">
+              {t('Goal {goal} a week', { goal: formatMinutes(goal) })}
+            </p>
           </>
         ) : (
-          <p className="mt-1 type-footnote text-muted">No weekly goal. Add one with Edit.</p>
+          <p className="mt-1 type-footnote text-muted">{t('No weekly goal. Add one with Edit.')}</p>
         )}
       </Card>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <StatTile label="Sessions" value={String(sessions?.length ?? 0)} icon="activity" />
-        <StatTile label="Total time" value={formatMinutes(totalMinutes)} icon="clock" />
+        <StatTile label={t('Sessions')} value={String(sessions?.length ?? 0)} icon="activity" />
+        <StatTile label={t('Total time')} value={formatMinutes(totalMinutes)} icon="clock" />
       </div>
 
       <div className="mt-4">
         <Link to={`/practice/session?skill=${skill.id}`} className={LINK_BUTTON}>
-          Start a session
+          {t('Start a session')}
         </Link>
       </div>
 
-      <Section title="Sessions">
+      <Section title={t('Sessions')}>
         {sessions === undefined || sessions.length === 0 ? (
           <EmptyState
             icon="clock"
-            title="No sessions yet"
-            description="Start a session for this skill to see your time here."
+            title={t('No sessions yet')}
+            description={t('Start a session for this skill to see your time here.')}
           />
         ) : (
           <SessionList
@@ -112,19 +122,19 @@ export function SkillDetailScreen() {
         )}
       </Section>
 
-      <Section title="Manage">
+      <Section title={t('Manage')}>
         <div className="flex flex-col gap-2 p-3">
           <Button variant="secondary" onClick={() => setEditOpen(true)}>
-            Edit
+            {t('Edit')}
           </Button>
           <Button
             variant="secondary"
             onClick={() => void run(() => repository.setArchived(skill.id, !skill.isArchived))}
           >
-            {skill.isArchived ? 'Unarchive' : 'Archive'}
+            {skill.isArchived ? t('Unarchive') : t('Archive')}
           </Button>
           <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-            Delete skill
+            {t('Delete skill')}
           </Button>
           {error && (
             <p role="alert" className="type-subhead text-danger">
@@ -137,9 +147,11 @@ export function SkillDetailScreen() {
       <SkillFormSheet open={editOpen} onClose={() => setEditOpen(false)} skill={skill} />
       <ConfirmDialog
         open={deleteOpen}
-        title={`Delete “${skill.name}”?`}
-        message="The skill is removed. Sessions you already recorded are kept in your totals and history."
-        confirmLabel="Delete skill"
+        title={t('Delete “{name}”?', { name: skill.name })}
+        message={t(
+          'The skill is removed. Sessions you already recorded are kept in your totals and history.',
+        )}
+        confirmLabel={t('Delete skill')}
         destructive
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() => {

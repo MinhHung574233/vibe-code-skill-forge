@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import type { BoardSize } from './board';
 import type { Level } from './ai';
 
@@ -60,9 +61,10 @@ export function breakdown(records: readonly GoRecord[]): {
 
 /** Result line for a recent-games row, e.g. `Won by 3.5` or `Lost by resignation`. */
 export function describeResult(r: Pick<GoRecord, 'result' | 'margin' | 'by'>): string {
-  if (r.result === 'draw') return 'Draw';
-  const verb = r.result === 'win' ? 'Won' : 'Lost';
-  if (r.by === 'resign') return `${verb} by resignation`;
+  if (r.result === 'draw') return t('Draw');
+  const won = r.result === 'win';
+  if (r.by === 'resign') return won ? t('Won by resignation') : t('Lost by resignation');
   const amount = Math.abs(r.margin);
-  return `${verb} by ${Number.isInteger(amount) ? amount : amount.toFixed(1)}`;
+  const shown = Number.isInteger(amount) ? amount : amount.toFixed(1);
+  return won ? t('Won by {margin}', { margin: shown }) : t('Lost by {margin}', { margin: shown });
 }

@@ -8,6 +8,7 @@ import { Screen } from '@/components/Screen';
 import { Skeleton } from '@/components/Skeleton';
 import { systemClock } from '@/core/time/clock';
 import { getDb } from '@/db/boot';
+import { t } from '@/i18n/core';
 import type { CompletionOutcome } from '@/features/training/domain/session';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import { useTrainingEngine } from '@/features/training/ui/useTraining';
@@ -23,7 +24,7 @@ import {
   type Outcome,
 } from '../domain/play';
 import { CaroBoard } from './CaroBoard';
-import { CARO_HOME, LEVEL_LABEL } from './labels';
+import { CARO_HOME, levelLabel } from './labels';
 import { useAiClient, useConfirmMoves } from './useCaroPrefs';
 
 /** `practice/caro/play`: loads the saved game; without one there is nothing to play. */
@@ -42,7 +43,7 @@ export function CaroPlay() {
 
   if (draft === undefined) {
     return (
-      <Screen title="Play" back={{ to: CARO_HOME, label: 'Caro' }}>
+      <Screen title={t('Play')} back={{ to: CARO_HOME, label: t('Caro') }}>
         <Skeleton className="aspect-square w-full" />
       </Screen>
     );
@@ -57,12 +58,12 @@ function statusText(args: {
   aiFailed: boolean;
   aiming: boolean;
 }): string {
-  if (args.outcome === 'win') return 'You win!';
-  if (args.outcome === 'loss') return 'The computer wins.';
-  if (args.outcome === 'draw') return 'Draw: the board is full.';
-  if (args.aiFailed) return 'The computer could not move.';
-  if (args.thinking) return 'Computer is thinking…';
-  return args.aiming ? 'Tap the marked cell again, or press Place stone.' : 'Your move.';
+  if (args.outcome === 'win') return t('You win!');
+  if (args.outcome === 'loss') return t('The computer wins.');
+  if (args.outcome === 'draw') return t('Draw: the board is full.');
+  if (args.aiFailed) return t('The computer could not move.');
+  if (args.thinking) return t('Computer is thinking…');
+  return args.aiming ? t('Tap the marked cell again, or press Place stone.') : t('Your move.');
 }
 
 function GameScreen({ draft }: { draft: CaroDraft }) {
@@ -166,17 +167,17 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
     setFinishAttempt((n) => n + 1);
   };
 
-  const youName = human === 1 ? 'filled stones' : 'hollow stones';
+  const youPlay = human === 1 ? t('You play filled stones') : t('You play hollow stones');
   const size = draft.size;
 
   return (
-    <Screen title="Play" back={{ to: CARO_HOME, label: 'Caro' }}>
+    <Screen title={t('Play')} back={{ to: CARO_HOME, label: t('Caro') }}>
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3 type-subhead text-muted">
           <span>
-            {LEVEL_LABEL[draft.level]} · {size}×{size}
+            {levelLabel(draft.level)} · {size}×{size}
           </span>
-          <span>You play {youName}</span>
+          <span>{youPlay}</span>
         </div>
 
         <p role="status" className="min-h-6 type-headline">
@@ -205,13 +206,15 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
               setAiAttempt((n) => n + 1);
             }}
           >
-            Try again
+            {t('Try again')}
           </Button>
         )}
 
         {saveFailed && (
           <p role="alert" className="type-footnote text-danger">
-            Could not save your progress. The game is still playable here, but may not resume.
+            {t(
+              'Could not save your progress. The game is still playable here, but may not resume.',
+            )}
           </p>
         )}
 
@@ -219,7 +222,7 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Chip selected={confirmMoves} onClick={() => setConfirmMoves(!confirmMoves)}>
-                Confirm each move
+                {t('Confirm each move')}
               </Chip>
             </div>
             <div className="flex gap-2">
@@ -229,7 +232,7 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
                   disabled={preview === null || locked}
                   onClick={() => preview !== null && place(preview)}
                 >
-                  Place stone
+                  {t('Place stone')}
                 </Button>
               )}
               {draft.level === 'easy' && (
@@ -239,7 +242,7 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
                   disabled={thinking || !canUndo(game, draft)}
                   onClick={undo}
                 >
-                  Undo
+                  {t('Undo')}
                 </Button>
               )}
               <Button
@@ -248,19 +251,22 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
                 className="flex-1"
                 onClick={() => setResignOpen(true)}
               >
-                Resign
+                {t('Resign')}
               </Button>
             </div>
           </div>
         ) : (
           <Card>
             <h2 className="type-title-2">
-              {outcome === 'win' ? 'You won' : outcome === 'loss' ? 'You lost' : 'Draw'}
+              {outcome === 'win' ? t('You won') : outcome === 'loss' ? t('You lost') : t('Draw')}
             </h2>
             <p className="mt-1 type-subhead text-muted">
-              {game.moves.length} moves on {LEVEL_LABEL[draft.level]}.
+              {t('{count} moves on {level}.', {
+                count: game.moves.length,
+                level: levelLabel(draft.level),
+              })}
               {finish?.ok && finish.session === null
-                ? ` Games with fewer than ${MIN_PLAYER_MOVES_FOR_SESSION} of your own moves earn no XP.`
+                ? ` ${t('Games with fewer than {count} of your own moves earn no XP.', { count: MIN_PLAYER_MOVES_FOR_SESSION })}`
                 : ''}
             </p>
             {finish && !finish.ok && (
@@ -269,7 +275,7 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
                   {finish.message}
                 </p>
                 <Button variant="secondary" fullWidth onClick={retryFinish}>
-                  Try saving again
+                  {t('Try saving again')}
                 </Button>
               </div>
             )}
@@ -279,22 +285,26 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
               disabled={finish === null}
               onClick={() => void navigate(CARO_HOME)}
             >
-              New game
+              {t('New game')}
             </Button>
           </Card>
         )}
 
         <details className="rounded-2xl border border-border bg-surface px-4">
           <summary className="flex min-h-[44px] cursor-pointer items-center type-subhead">
-            Move list ({game.moves.length})
+            {t('Move list ({count})', { count: game.moves.length })}
           </summary>
           <ol className="space-y-1 pb-3 type-footnote tabular-nums">
             {game.moves.map((cell, k) => {
               const stone = k % 2 === 0 ? 1 : 2;
               return (
                 <li key={k}>
-                  {k + 1}. {stone === human ? 'You' : 'Computer'}: row {Math.floor(cell / size) + 1}
-                  , column {(cell % size) + 1}
+                  {t('{n}. {who}: row {row}, column {col}', {
+                    n: k + 1,
+                    who: stone === human ? t('You') : t('Computer'),
+                    row: Math.floor(cell / size) + 1,
+                    col: (cell % size) + 1,
+                  })}
                 </li>
               );
             })}
@@ -305,9 +315,9 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
       <ConfirmDialog
         open={resignOpen}
         destructive
-        title="Resign this game?"
-        message="The game ends and nothing is recorded: no result, no XP."
-        confirmLabel="Resign"
+        title={t('Resign this game?')}
+        message={t('The game ends and nothing is recorded: no result, no XP.')}
+        confirmLabel={t('Resign')}
         onConfirm={() => void resign()}
         onCancel={() => setResignOpen(false)}
       />

@@ -1,4 +1,5 @@
 import { AppError } from '@/core/errors';
+import { t } from '@/i18n/core';
 import type { Clock } from '@/core/time/clock';
 import { err, ok, type Result } from '@/core/result';
 import { toAppError } from '@/db/errors';
@@ -27,7 +28,7 @@ export class DexieSettingsRepository implements SettingsRepository {
   async set<K extends SettingKey>(key: K, value: SettingValue<K>): Promise<Result<void>> {
     const parsed = SETTING_DEFS[key].schema.safeParse(value);
     if (!parsed.success) {
-      return err(new AppError('VALIDATION', `Invalid value for setting "${key}".`));
+      return err(new AppError('VALIDATION', t('Invalid value for setting "{key}".', { key })));
     }
     try {
       await this.db.settings.put({ key, value: parsed.data, updatedAt: this.clock.now() });

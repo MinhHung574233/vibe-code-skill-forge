@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, type KeyboardEvent } from 'react';
+import { t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
 import { BLACK, WHITE, type Board, type Color } from '../domain/board';
 import type { BoardEdges } from '../domain/tsumegoTypes';
@@ -49,8 +50,6 @@ interface GoBoardProps {
 const CELL = 24;
 const PAD = 22;
 
-const STONE_LABEL = { [BLACK]: 'black stone', [WHITE]: 'white stone' } as const;
-
 export function GoBoard({
   board,
   label,
@@ -69,50 +68,50 @@ export function GoBoard({
   className,
 }: GoBoardProps) {
   const uid = useId();
-  const t = board.topology;
+  const topo = board.topology;
   const [cursor, setCursor] = useState<number | null>(null);
   // the keyboard cursor is only drawn while the board is being used from the keyboard
   const [keyboardActive, setKeyboardActive] = useState(false);
 
   // The drawing covers the bounding box of the playable points.
   const box = useMemo(() => {
-    let x0 = t.width;
-    let y0 = t.height;
+    let x0 = topo.width;
+    let y0 = topo.height;
     let x1 = -1;
     let y1 = -1;
-    for (let p = 0; p < t.count; p++) {
-      if (!t.playable[p]) continue;
-      const x = p % t.width;
-      const y = Math.floor(p / t.width);
+    for (let p = 0; p < topo.count; p++) {
+      if (!topo.playable[p]) continue;
+      const x = p % topo.width;
+      const y = Math.floor(p / topo.width);
       x0 = Math.min(x0, x);
       y0 = Math.min(y0, y);
       x1 = Math.max(x1, x);
       y1 = Math.max(y1, y);
     }
     return { x0, y0, cols: x1 - x0 + 1, rows: y1 - y0 + 1 };
-  }, [t]);
+  }, [topo]);
 
   const px = (x: number) => PAD + (x - box.x0) * CELL;
   const py = (y: number) => PAD + (y - box.y0) * CELL;
   const width = PAD * 2 + (box.cols - 1) * CELL;
   const height = PAD * 2 + (box.rows - 1) * CELL;
-  const xOf = (p: number) => p % t.width;
-  const yOf = (p: number) => Math.floor(p / t.width);
+  const xOf = (p: number) => p % topo.width;
+  const yOf = (p: number) => Math.floor(p / topo.width);
 
   const interactive = (p: number): boolean => {
-    if (mode === 'none' || !t.playable[p]) return false;
+    if (mode === 'none' || !topo.playable[p]) return false;
     const c = board.get(p);
     return mode === 'play' ? c === 0 : c !== 0;
   };
 
   const move = (dx: number, dy: number) => {
-    const from = cursor ?? [...Array(t.count).keys()].find((p) => t.playable[p]) ?? 0;
+    const from = cursor ?? [...Array(topo.count).keys()].find((p) => topo.playable[p]) ?? 0;
     let x = xOf(from) + dx;
     let y = yOf(from) + dy;
     // skip over wall tiles
     while (x >= box.x0 && x < box.x0 + box.cols && y >= box.y0 && y < box.y0 + box.rows) {
-      const p = y * t.width + x;
-      if (t.playable[p]) {
+      const p = y * topo.width + x;
+      if (topo.playable[p]) {
         setCursor(p);
         return;
       }
@@ -137,7 +136,7 @@ export function GoBoard({
   const whiteId = `${uid}-white`;
   const stoneR = CELL * 0.46;
   const points: number[] = [];
-  for (let p = 0; p < t.count; p++) points.push(p);
+  for (let p = 0; p < topo.count; p++) points.push(p);
 
   const vLines = Array.from({ length: box.cols }, (_, i) => box.x0 + i);
   const hLines = Array.from({ length: box.rows }, (_, i) => box.y0 + i);
@@ -213,7 +212,7 @@ export function GoBoard({
         ))}
 
         {points.map((p) => {
-          if (t.playable[p]) return null;
+          if (topo.playable[p]) return null;
           const x = xOf(p);
           const y = yOf(p);
           if (x < box.x0 || x >= box.x0 + box.cols || y < box.y0 || y >= box.y0 + box.rows) {
@@ -253,7 +252,7 @@ export function GoBoard({
 
         {points.map((p) => {
           const c = board.get(p);
-          if (c === 0 || !t.playable[p]) return null;
+          if (c === 0 || !topo.playable[p]) return null;
           const dead = marks?.get(p) === 'dead';
           return (
             <g key={`t${p}`} opacity={dead ? 0.45 : 1}>
@@ -369,7 +368,7 @@ export function GoBoard({
         {points.map((p) => {
           if (!interactive(p)) return null;
           const c = board.get(p);
-          const name = c === 0 ? 'empty' : STONE_LABEL[c];
+          const name = c === 0 ? t('empty') : c === BLACK ? t('black stone') : t('white stone');
           return (
             <rect
               key={`b${p}`}

@@ -1,3 +1,4 @@
+import { t } from '@/i18n/core';
 import { useEffect, useState, type ReactNode } from 'react';
 
 interface ProgressRingProps {
@@ -44,7 +45,7 @@ export function ProgressRing({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={percent}
-      aria-valuetext={`${percent} percent`}
+      aria-valuetext={t('{percent} percent', { percent })}
       className="relative inline-flex items-center justify-center"
       style={{ width: size, height: size }}
     >

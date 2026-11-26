@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { t } from '@/i18n/core';
 import { Card } from './Card';
 import { Screen } from './Screen';
 
@@ -17,7 +18,9 @@ export function ShellScreen({ title, milestone, children }: ShellScreenProps) {
     <Screen title={title}>
       <Card>
         <p className="type-subhead text-muted">
-          Foundation shell. This screen is implemented in milestone {milestone}.
+          {t('Foundation shell. This screen is implemented in milestone {milestone}.', {
+            milestone,
+          })}
         </p>
       </Card>
       {children}

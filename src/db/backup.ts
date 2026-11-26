@@ -2,6 +2,7 @@ import Dexie from 'dexie';
 import { z } from 'zod';
 import { AppError } from '@/core/errors';
 import { err, ok, type Result } from '@/core/result';
+import { t } from '@/i18n/core';
 import { toAppError } from './errors';
 import { closeActiveDb } from './boot';
 import { EPHEMERAL_TABLES, countMarkerTables, totalRows } from './marker';
@@ -270,7 +271,7 @@ export async function parseBackup(
   try {
     json = JSON.parse(text);
   } catch {
-    return invalid('This file is not a valid backup (it is not readable JSON).');
+    return invalid(t('This file is not a valid backup (it is not readable JSON).'));
   }
 
   const envelope = BackupSchema.safeParse(json);
@@ -278,8 +279,8 @@ export async function parseBackup(
     const app = (json as { app?: unknown } | null)?.app;
     return invalid(
       app === 'skillforge'
-        ? 'This backup file is damaged or incomplete.'
-        : 'This is not a SkillForge backup file.',
+        ? t('This backup file is damaged or incomplete.')
+        : t('This is not a SkillForge backup file.'),
     );
   }
   const file = envelope.data as BackupFile;
@@ -287,28 +288,33 @@ export async function parseBackup(
   const latest = versions.reduce((max, v) => Math.max(max, v.version), 0);
   if (file.schemaVersion > latest) {
     return invalid(
-      'This backup was made by a newer version of SkillForge. Update the app, then try again.',
+      t('This backup was made by a newer version of SkillForge. Update the app, then try again.'),
     );
   }
 
   const known = tablesAtVersion(versions, file.schemaVersion);
   for (const [name, rows] of Object.entries(file.tables)) {
-    if (!known.has(name)) return invalid(`The backup contains an unknown table "${name}".`);
+    if (!known.has(name))
+      return invalid(t('The backup contains an unknown table "{name}".', { name }));
     const schema = ROW_SCHEMAS[name];
     if (!schema) {
       if (EPHEMERAL_TABLES.includes(name as (typeof EPHEMERAL_TABLES)[number])) continue;
-      return invalid(`The backup contains a table this app cannot check: "${name}".`);
+      return invalid(t('The backup contains a table this app cannot check: "{name}".', { name }));
     }
     for (let i = 0; i < rows.length; i++) {
       if (!schema.safeParse(rows[i]).success) {
-        return invalid(`The backup is damaged: "${name}" entry ${i + 1} is not valid.`);
+        return invalid(
+          t('The backup is damaged: "{name}" entry {n} is not valid.', { name, n: i + 1 }),
+        );
       }
     }
   }
 
   const expected = await sha256Hex(checksumInput(file));
   if (expected !== file.checksum) {
-    return invalid('The backup failed its integrity check. The file was changed or is incomplete.');
+    return invalid(
+      t('The backup failed its integrity check. The file was changed or is incomplete.'),
+    );
   }
   return ok(file);
 }
@@ -393,7 +399,7 @@ export async function importBackup(
         return err(
           new AppError(
             'IO',
-            'The import failed and the previous data could not be restored automatically.',
+            t('The import failed and the previous data could not be restored automatically.'),
             { cause },
           ),
         );
@@ -404,8 +410,10 @@ export async function importBackup(
       new AppError(
         mapped.code === 'QUOTA' ? 'QUOTA' : 'IO',
         mapped.code === 'QUOTA'
-          ? 'There is not enough free storage on this device to restore the backup. Your previous data was kept.'
-          : 'The backup could not be restored. Your previous data was kept.',
+          ? t(
+              'There is not enough free storage on this device to restore the backup. Your previous data was kept.',
+            )
+          : t('The backup could not be restored. Your previous data was kept.'),
         { cause },
       ),
     );

@@ -5,6 +5,7 @@ import { Sheet } from '@/components/Sheet';
 import { newId } from '@/core/ids';
 import { toLocalDate } from '@/core/time/localDate';
 import { useNow } from '@/hooks/useNow';
+import { t } from '@/i18n/core';
 import { useSkills, useTrainingEngine } from './useTraining';
 import { ManualLogSchema, manualSessionTimes } from '../domain/manual';
 import type { CompletionOutcome } from '../domain/session';
@@ -18,7 +19,7 @@ interface ManualLogSheetProps {
 
 export function ManualLogSheet({ open, onClose, onRecorded, defaultSkillId }: ManualLogSheetProps) {
   return (
-    <Sheet open={open} onClose={onClose} title="Log a session">
+    <Sheet open={open} onClose={onClose} title={t('Log a session')}>
       {open && (
         <ManualLogForm onClose={onClose} onRecorded={onRecorded} defaultSkillId={defaultSkillId} />
       )}
@@ -48,14 +49,14 @@ function ManualLogForm({ onClose, onRecorded, defaultSkillId }: Omit<ManualLogSh
       const next: typeof errors = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0] === 'date' ? 'date' : 'minutes';
-        next[key] ??= issue.message;
+        next[key] ??= t(issue.message);
       }
       setErrors(next);
       return;
     }
     const times = manualSessionTimes(parsed.data.date, parsed.data.minutes, Date.now());
     if (!times) {
-      setErrors({ date: 'That date is in the future.' });
+      setErrors({ date: t('That date is in the future.') });
       return;
     }
     setErrors({});
@@ -86,8 +87,8 @@ function ManualLogForm({ onClose, onRecorded, defaultSkillId }: Omit<ManualLogSh
         void submit();
       }}
     >
-      <SelectField label="Skill" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
-        <option value="">No specific skill</option>
+      <SelectField label={t('Skill')} value={skillId} onChange={(e) => setSkillId(e.target.value)}>
+        <option value="">{t('No specific skill')}</option>
         {(skills ?? []).map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
@@ -95,15 +96,15 @@ function ManualLogForm({ onClose, onRecorded, defaultSkillId }: Omit<ManualLogSh
         ))}
       </SelectField>
       <TextField
-        label="Minutes"
+        label={t('Minutes')}
         inputMode="numeric"
-        placeholder="e.g. 30"
+        placeholder={t('e.g. 30')}
         value={minutes}
         onChange={(e) => setMinutes(e.target.value)}
         error={errors.minutes}
       />
       <TextField
-        label="Day"
+        label={t('Day')}
         type="date"
         max={today}
         value={date}
@@ -111,13 +112,15 @@ function ManualLogForm({ onClose, onRecorded, defaultSkillId }: Omit<ManualLogSh
         error={errors.date}
       />
       <TextAreaField
-        label="Notes"
+        label={t('Notes')}
         maxLength={300}
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
       />
       <p className="type-footnote text-muted">
-        Logged sessions count for your time, goals and streak. XP is only earned by timed sessions.
+        {t(
+          'Logged sessions count for your time, goals and streak. XP is only earned by timed sessions.',
+        )}
       </p>
       {errors.form && (
         <p role="alert" className="type-subhead text-danger">
@@ -125,10 +128,10 @@ function ManualLogForm({ onClose, onRecorded, defaultSkillId }: Omit<ManualLogSh
         </p>
       )}
       <Button type="submit" fullWidth loading={saving}>
-        Save session
+        {t('Save session')}
       </Button>
       <Button type="button" variant="ghost" fullWidth onClick={onClose}>
-        Cancel
+        {t('Cancel')}
       </Button>
     </form>
   );

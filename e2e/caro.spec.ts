@@ -118,7 +118,7 @@ test('finishing a game records the result and awards XP once', async ({ page }) 
 
   await placeStone(page, 8, 5);
   await expect(page.getByRole('heading', { name: 'You won' })).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('You win!');
+  await expect(page.getByRole('status').filter({ hasText: 'You win!' })).toHaveText('You win!');
   await expect(cell(page, 8, 5, 'your stone, last move, winning line')).toBeVisible();
 
   const saved = page.getByRole('dialog', { name: 'Session saved' });

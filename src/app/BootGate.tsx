@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
 import type { BootOutcome } from '@/db/boot';
+import { t } from '@/i18n/core';
 import { acceptEmptyDatabase, resetAllData, restoreLatestSnapshot } from '@/db/recovery';
 import { bootApp, type BootHooks } from './bootApp';
 import { RecoveryScreen } from './RecoveryScreen';
@@ -41,7 +42,7 @@ export function BootGate({ children, boot = bootApp }: BootGateProps) {
           outcome: {
             status: 'recovery',
             reason: 'open-failed',
-            message: 'The app could not start.',
+            message: t('The app could not start.'),
             hasSnapshot: false,
           },
         }),
@@ -57,7 +58,7 @@ export function BootGate({ children, boot = bootApp }: BootGateProps) {
       <div
         role="status"
         aria-busy="true"
-        aria-label="Loading SkillForge"
+        aria-label={t('Loading SkillForge')}
         className="fixed inset-0 flex items-center justify-center bg-bg"
       >
         <span
@@ -72,11 +73,13 @@ export function BootGate({ children, boot = bootApp }: BootGateProps) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-bg">
         <ErrorState
-          title="Reload to finish updating"
-          message="SkillForge was updated in another window. Reload to continue; your data is safe."
+          title={t('Reload to finish updating')}
+          message={t(
+            'SkillForge was updated in another window. Reload to continue; your data is safe.',
+          )}
         />
         <div className="absolute inset-x-0 bottom-16 flex justify-center">
-          <Button onClick={() => window.location.reload()}>Reload</Button>
+          <Button onClick={() => window.location.reload()}>{t('Reload')}</Button>
         </div>
       </div>
     );

@@ -3,6 +3,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Icon } from '@/components/Icon';
+import { t } from '@/i18n/core';
 import { BackupImport } from '@/features/settings/ui/BackupImport';
 import type { RecoveryReason } from '@/db/boot';
 
@@ -54,7 +55,7 @@ export function RecoveryScreen({
     try {
       await action();
     } catch {
-      setFailure('That did not work. Your data has not been changed further.');
+      setFailure(t('That did not work. Your data has not been changed further.'));
       setBusy(null);
     }
   };
@@ -69,23 +70,25 @@ export function RecoveryScreen({
         <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full border border-border bg-surface text-danger">
           <Icon name="alert" size={28} />
         </span>
-        <h1 className="type-title-1">{TITLES[reason]}</h1>
+        <h1 className="type-title-1">{t(TITLES[reason])}</h1>
         <p className="mt-2 type-body text-muted">{message}</p>
       </div>
 
       {reason === 'data-loss-suspected' && (
         <Card>
           <p className="type-subhead text-muted">
-            Nothing has been deleted by this app. If you saved a backup file, keep it safe; it is
-            the only guaranteed way to bring this data back.
+            {t(
+              'Nothing has been deleted by this app. If you saved a backup file, keep it safe; it is the only guaranteed way to bring this data back.',
+            )}
           </p>
         </Card>
       )}
       {reason === 'schema-too-new' && (
         <Card>
           <p className="type-subhead text-muted">
-            Close the app completely and open it again while online so the latest version can load.
-            Your data has not been changed.
+            {t(
+              'Close the app completely and open it again while online so the latest version can load. Your data has not been changed.',
+            )}
           </p>
         </Card>
       )}
@@ -96,7 +99,7 @@ export function RecoveryScreen({
       )}
 
       <div className="flex flex-col gap-2">
-        {canRetry && <Button onClick={onRetry}>Try again</Button>}
+        {canRetry && <Button onClick={onRetry}>{t('Try again')}</Button>}
         {hasSnapshot && (
           <Button
             variant={canRetry ? 'secondary' : 'primary'}
@@ -104,34 +107,36 @@ export function RecoveryScreen({
             disabled={busy !== null}
             onClick={() => void run('restore', onRestoreSnapshot)}
           >
-            Restore the copy saved before the last update
+            {t('Restore the copy saved before the last update')}
           </Button>
         )}
         {reason === 'data-loss-suspected' && (
           <Button variant="secondary" onClick={onAcceptEmpty}>
-            Continue with empty data
+            {t('Continue with empty data')}
           </Button>
         )}
         {canImport && (
           <BackupImport
             onImported={onImported}
             variant={hasSnapshot || canRetry ? 'secondary' : 'primary'}
-            label="Restore from a backup file"
+            label={t('Restore from a backup file')}
           />
         )}
-        {reason === 'schema-too-new' && <Button onClick={onRetry}>Check again</Button>}
+        {reason === 'schema-too-new' && <Button onClick={onRetry}>{t('Check again')}</Button>}
         {canResetData && (
           <Button variant="ghost" disabled={busy !== null} onClick={() => setConfirmReset(true)}>
-            Erase local data and start over
+            {t('Erase local data and start over')}
           </Button>
         )}
       </div>
 
       <ConfirmDialog
         open={confirmReset}
-        title="Erase all local data?"
-        message="Everything stored on this device by SkillForge will be deleted, including the saved copy. This cannot be undone."
-        confirmLabel="Erase everything"
+        title={t('Erase all local data?')}
+        message={t(
+          'Everything stored on this device by SkillForge will be deleted, including the saved copy. This cannot be undone.',
+        )}
+        confirmLabel={t('Erase everything')}
         destructive
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => {

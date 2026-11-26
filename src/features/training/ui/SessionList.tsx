@@ -4,6 +4,7 @@ import { Button } from '@/components/Button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ACTIVITY_LABELS, isActivityType } from '@/core/training/config';
 import { formatMinutes } from '@/core/training/analytics';
+import { t } from '@/i18n/core';
 import { formatDayLabel } from '@/utils/format';
 import type { SessionRecord } from '../domain/overview';
 import { useTrainingEngine } from './useTraining';
@@ -42,7 +43,7 @@ export function SessionList({ sessions, skillNames, today, deletable = false }: 
         {sessions.map((s) => {
           const title =
             (s.skillId ? skillNames.get(s.skillId) : undefined) ??
-            (isActivityType(s.activityType) ? ACTIVITY_LABELS[s.activityType] : s.activityType);
+            (isActivityType(s.activityType) ? t(ACTIVITY_LABELS[s.activityType]) : s.activityType);
           return (
             <li key={s.id} className="flex items-start gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
@@ -56,15 +57,18 @@ export function SessionList({ sessions, skillNames, today, deletable = false }: 
                   </p>
                 )}
               </div>
-              {s.source === 'manual' && <Badge>Logged</Badge>}
+              {s.source === 'manual' && <Badge>{t('Logged')}</Badge>}
               {deletable && s.activityType === 'practice_session' && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  aria-label={`Delete ${title} session from ${formatDayLabel(s.localDate, today)}`}
+                  aria-label={t('Delete {title} session from {day}', {
+                    title,
+                    day: formatDayLabel(s.localDate, today),
+                  })}
                   onClick={() => setPending(s)}
                 >
-                  Delete
+                  {t('Delete')}
                 </Button>
               )}
             </li>
@@ -73,9 +77,11 @@ export function SessionList({ sessions, skillNames, today, deletable = false }: 
       </ul>
       <ConfirmDialog
         open={pending !== null}
-        title="Delete this session?"
-        message="Its time, XP and streak credit are removed. Achievements you already unlocked stay."
-        confirmLabel="Delete"
+        title={t('Delete this session?')}
+        message={t(
+          'Its time, XP and streak credit are removed. Achievements you already unlocked stay.',
+        )}
+        confirmLabel={t('Delete')}
         destructive
         onCancel={() => setPending(null)}
         onConfirm={() => void confirmDelete()}

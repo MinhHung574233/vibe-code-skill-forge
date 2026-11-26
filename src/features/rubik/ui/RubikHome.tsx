@@ -7,6 +7,7 @@ import { Screen } from '@/components/Screen';
 import { ListRow, Section } from '@/components/Section';
 import { StatTile } from '@/components/StatTile';
 import type { CompletionOutcome } from '@/features/training/domain/session';
+import { t } from '@/i18n/core';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import { applyScramble } from '../domain/cube';
 import { generateScramble } from '../domain/scramble';
@@ -24,7 +25,6 @@ import { CubeNet } from './cubeDrawing';
 import { TimerPad } from './TimerPad';
 import { useOpenSessionSolves, useRubikService, useSolves } from './useRubik';
 
-const MODULE_BACK = { to: '/practice', label: 'Practice' };
 const INSPECTION_KEY = 'sf-rubik-inspection';
 
 function readInspectionPref(): boolean {
@@ -36,6 +36,7 @@ function readInspectionPref(): boolean {
 }
 
 export function RubikHome() {
+  const moduleBack = { to: '/practice', label: t('Practice') };
   const service = useRubikService();
   const solves = useSolves();
   const sessionSolves = useOpenSessionSolves();
@@ -64,7 +65,10 @@ export function RubikHome() {
     () =>
       all.slice(-20).map((s, i, window) => ({
         label: String(all.length - window.length + i + 1),
-        title: `Solve ${all.length - window.length + i + 1}: ${formatSolve(s)}`,
+        title: t('Solve {n}: {result}', {
+          n: all.length - window.length + i + 1,
+          result: formatSolve(s),
+        }),
         value: (effectiveMs(s) ?? 0) / 1000,
       })),
     [all],
@@ -86,7 +90,7 @@ export function RubikHome() {
       await service.addSolve({ timeMs, scramble, penalty });
       setScramble(generateScramble());
     } catch {
-      setError('Could not save that solve. Your device may be out of storage.');
+      setError(t('Could not save that solve. Your device may be out of storage.'));
     }
   };
 
@@ -98,29 +102,32 @@ export function RubikHome() {
   };
 
   return (
-    <Screen title="Rubik’s Cube" back={MODULE_BACK}>
+    <Screen title={t('Rubik’s Cube')} back={moduleBack}>
       <Card>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="type-footnote font-medium uppercase tracking-wide text-muted">
-              Scramble
+              {t('Scramble')}
             </h2>
-            <p className="mt-1 break-words font-mono type-body" aria-label="Scramble moves">
+            <p className="mt-1 break-words font-mono type-body" aria-label={t('Scramble moves')}>
               {scramble}
             </p>
           </div>
         </div>
         {cube && (
           <div className="mt-3">
-            <CubeNet cube={cube} label={`The cube after the scramble ${scramble}`} />
+            <CubeNet
+              cube={cube}
+              label={t('The cube after the scramble {scramble}', { scramble })}
+            />
           </div>
         )}
         <div className="mt-3 flex gap-2">
           <Button variant="secondary" size="sm" onClick={() => setScramble(generateScramble())}>
-            New scramble
+            {t('New scramble')}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowCube((v) => !v)}>
-            {showCube ? 'Hide cube' : 'Show cube'}
+            {showCube ? t('Hide cube') : t('Show cube')}
           </Button>
           <Button
             variant={inspection ? 'primary' : 'ghost'}
@@ -128,7 +135,7 @@ export function RubikHome() {
             aria-pressed={inspection}
             onClick={toggleInspection}
           >
-            Inspection
+            {t('Inspection')}
           </Button>
         </div>
       </Card>
@@ -149,8 +156,8 @@ export function RubikHome() {
 
       {last && (
         <Card className="mt-4">
-          <p className="type-subhead text-muted">Last solve</p>
-          <p className="type-title-2 tabular-nums" aria-label="Last solve result">
+          <p className="type-subhead text-muted">{t('Last solve')}</p>
+          <p className="type-title-2 tabular-nums" aria-label={t('Last solve result')}>
             {formatSolve(last)}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -175,7 +182,7 @@ export function RubikHome() {
               DNF
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
-              Delete
+              {t('Delete')}
             </Button>
           </div>
         </Card>
@@ -183,32 +190,38 @@ export function RubikHome() {
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <StatTile
-          label="Best"
+          label={t('Best')}
           value={stats.best === null ? '–' : formatSolveTime(stats.best)}
           icon="star"
         />
         <StatTile
-          label="Solves"
+          label={t('Solves')}
           value={String(all.length)}
-          hint={`${sessionSolves?.length ?? 0} this session`}
+          hint={t('{n} this session', { n: sessionSolves?.length ?? 0 })}
           icon="cube"
         />
         <StatTile
-          label="Ao5"
+          label={t('Ao5')}
           value={formatAverage(stats.ao5)}
-          hint={stats.bestAo5 === null ? undefined : `Best ${formatSolveTime(stats.bestAo5)}`}
+          hint={
+            stats.bestAo5 === null
+              ? undefined
+              : t('Best {time}', { time: formatSolveTime(stats.bestAo5) })
+          }
           icon="activity"
         />
-        <StatTile label="Ao12" value={formatAverage(stats.ao12)} icon="activity" />
+        <StatTile label={t('Ao12')} value={formatAverage(stats.ao12)} icon="activity" />
       </div>
 
       {chartData.length >= 2 && (
         <Card className="mt-4">
-          <h2 className="mb-2 type-headline">Last {chartData.length} solves</h2>
+          <h2 className="mb-2 type-headline">{t('Last {n} solves', { n: chartData.length })}</h2>
           <BarChart
             data={chartData}
             formatValue={(v) => `${v.toFixed(2)} s`}
-            summary={`Your last ${chartData.length} solve times in seconds; lower is faster.`}
+            summary={t('Your last {n} solve times in seconds; lower is faster.', {
+              n: chartData.length,
+            })}
             labelEvery={chartData.length > 10 ? 5 : 1}
           />
         </Card>
@@ -217,24 +230,24 @@ export function RubikHome() {
       {(sessionSolves?.length ?? 0) > 0 && (
         <div className="mt-4">
           <Button fullWidth onClick={() => void finishSession()}>
-            Finish session
+            {t('Finish session')}
           </Button>
           <p className="mt-2 px-1 type-footnote text-muted">
-            Finishing saves this session for your streak, goals and XP.
+            {t('Finishing saves this session for your streak, goals and XP.')}
           </p>
         </div>
       )}
 
-      <Section title="More">
+      <Section title={t('More')}>
         <ListRow
-          title="Solve history"
-          subtitle="Every solve, with penalties"
+          title={t('Solve history')}
+          subtitle={t('Every solve, with penalties')}
           icon="clock"
           to="/practice/rubik/solves"
         />
         <ListRow
-          title="Algorithms"
-          subtitle="2-look OLL and all 21 PLL, with pictures"
+          title={t('Algorithms')}
+          subtitle={t('2-look OLL and all 21 PLL, with pictures')}
           icon="book"
           to="/practice/rubik/algorithms"
         />
@@ -242,9 +255,9 @@ export function RubikHome() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete this solve?"
-        message="It will be removed from your times and averages."
-        confirmLabel="Delete"
+        title={t('Delete this solve?')}
+        message={t('It will be removed from your times and averages.')}
+        confirmLabel={t('Delete')}
         destructive
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => {

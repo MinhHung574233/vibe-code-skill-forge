@@ -1,4 +1,5 @@
 import { AppError, isAppError } from '@/core/errors';
+import { t } from '@/i18n/core';
 
 /**
  * Maps Dexie / IndexedDB failures to AppError so callers never branch on raw DOM exceptions.
@@ -13,7 +14,7 @@ export function toAppError(error: unknown): AppError {
     case 'ConstraintError':
       return new AppError('CONSTRAINT', message, { cause: error });
     case 'QuotaExceededError':
-      return new AppError('QUOTA', 'Device storage is full.', { cause: error });
+      return new AppError('QUOTA', t('Device storage is full.'), { cause: error });
     case 'VersionError':
       return new AppError('VERSION', message, { cause: error });
     case 'SecurityError':

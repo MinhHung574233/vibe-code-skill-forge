@@ -1,4 +1,23 @@
-import { pointOf, squareTopology, type BoardSize } from '../domain/board';
+import { t } from '@/i18n/core';
+import { BLACK, pointOf, squareTopology, type BoardSize, type Color } from '../domain/board';
+import type { Level } from '../domain/ai';
+
+/** Translated at call time (render), never at import. */
+export const colorName = (c: Color): string => (c === BLACK ? t('Black') : t('White'));
+
+export function levelLabel(level: Level): string {
+  switch (level) {
+    case 'easy':
+      return t('Easy');
+    case 'medium':
+      return t('Medium');
+    case 'hard':
+      return t('Hard');
+  }
+}
+
+/** The notation `B+3.5` / `W+R` stays as it is; only the word for a draw is translated. */
+export const resultNotation = (text: string): string => (text === 'Draw' ? t('Draw') : text);
 
 /** Column letters skip "I", as on every Go board. */
 const COLUMNS = 'ABCDEFGHJKLMNOPQRST';

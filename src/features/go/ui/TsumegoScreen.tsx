@@ -7,13 +7,14 @@ import { Chip } from '@/components/Chip';
 import { EmptyState } from '@/components/EmptyState';
 import { Screen } from '@/components/Screen';
 import { systemClock } from '@/core/time/clock';
+import { t } from '@/i18n/core';
 import type { CompletionOutcome } from '@/features/training/domain/session';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import { useTrainingEngine } from '@/features/training/ui/useTraining';
 import type { Board } from '../domain/board';
 import { TSUMEGO_PROBLEMS } from '../domain/tsumego';
 import {
-  CATEGORY_LABELS,
+  categoryLabel,
   colorOf,
   objectiveText,
   pointIndex,
@@ -36,11 +37,11 @@ export function TsumegoScreen() {
 
   if (!problem) {
     return (
-      <Screen title="Problem" back={{ to: `${base}/tsumego`, label: 'Problems' }}>
+      <Screen title={t('Problem')} back={{ to: `${base}/tsumego`, label: t('Problems') }}>
         <EmptyState
           icon="target"
-          title="Problem not found"
-          description="Pick a problem from the list."
+          title={t('Problem not found')}
+          description={t('Pick a problem from the list.')}
         />
       </Screen>
     );
@@ -78,7 +79,7 @@ function ProblemView({ problem, nextId }: { problem: TsumegoProblem; nextId: str
     const after = initial.clone();
     const result = after.play(point, colorOf(problem));
     if (!result.ok) {
-      setMessage('That move is not legal here.');
+      setMessage(t('That move is not legal here.'));
       return;
     }
     setMessage(null);
@@ -93,7 +94,7 @@ function ProblemView({ problem, nextId }: { problem: TsumegoProblem; nextId: str
     setVerdict({
       kind: 'wrong',
       point,
-      why: known?.why ?? 'That is not the key move. Look for the point that decides the fight.',
+      why: known?.why ?? t('That is not the key move. Look for the point that decides the fight.'),
     });
     void repository.recordPuzzleAttempt(problem.id, false);
   };
@@ -130,73 +131,76 @@ function ProblemView({ problem, nextId }: { problem: TsumegoProblem; nextId: str
   };
 
   return (
-    <Screen title={problem.title} back={{ to: `${base}/tsumego`, label: 'Problems' }}>
+    <Screen title={t(problem.title)} back={{ to: `${base}/tsumego`, label: t('Problems') }}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Chip>{CATEGORY_LABELS[problem.category]}</Chip>
-        <Badge tone="neutral">Level {problem.difficulty}</Badge>
-        {(wasSolved || verdict?.kind === 'correct') && <Badge tone="success">Solved</Badge>}
+        <Chip>{categoryLabel(problem.category)}</Chip>
+        <Badge tone="neutral">{t('Level {n}', { n: problem.difficulty })}</Badge>
+        {(wasSolved || verdict?.kind === 'correct') && <Badge tone="success">{t('Solved')}</Badge>}
       </div>
       <p className="mb-3 type-headline">{objectiveText(problem)}</p>
 
       <GoBoard
         board={board}
-        label={`Tsumego diagram. ${objectiveText(problem)}`}
+        label={t('Tsumego diagram. {objective}', { objective: objectiveText(problem) })}
         edges={problem.edges}
         targets={targets}
         highlights={revealed ? solutionPoints : undefined}
         lastMove={verdict ? verdict.point : null}
         mode={verdict?.kind === 'correct' ? 'none' : 'play'}
         onPoint={play}
-        pointLabel={(p) => `column ${(p % width) + 1}, row ${Math.floor(p / width) + 1}`}
+        pointLabel={(p) =>
+          t('column {col}, row {row}', { col: (p % width) + 1, row: Math.floor(p / width) + 1 })
+        }
       />
       <p className="mt-2 type-footnote text-muted">
-        The triangle marks the group to save or capture. The diagram is the whole fight: nothing
-        outside it can be played.
+        {t(
+          'The triangle marks the group to save or capture. The diagram is the whole fight: nothing outside it can be played.',
+        )}
       </p>
 
       <div role="status" aria-live="polite" className="mt-3">
         {message && <p className="type-subhead text-danger">{message}</p>}
         {verdict?.kind === 'correct' && (
           <Card className="border-success">
-            <p className="type-headline text-success">Correct!</p>
-            <p className="mt-1 type-body">{problem.explanation}</p>
+            <p className="type-headline text-success">{t('Correct!')}</p>
+            <p className="mt-1 type-body">{t(problem.explanation)}</p>
           </Card>
         )}
         {verdict?.kind === 'wrong' && (
           <Card className="border-danger">
-            <p className="type-headline text-danger">Not this move</p>
-            <p className="mt-1 type-body">{verdict.why}</p>
+            <p className="type-headline text-danger">{t('Not this move')}</p>
+            <p className="mt-1 type-body">{t(verdict.why)}</p>
           </Card>
         )}
         {revealed && !verdict && (
           <Card>
-            <p className="type-headline">Answer</p>
-            <p className="mt-1 type-body">{problem.explanation}</p>
+            <p className="type-headline">{t('Answer')}</p>
+            <p className="mt-1 type-body">{t(problem.explanation)}</p>
             <p className="mt-1 type-footnote text-muted">
-              Shown answers do not count as solved. Try it yourself to earn the tick.
+              {t('Shown answers do not count as solved. Try it yourself to earn the tick.')}
             </p>
           </Card>
         )}
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
-        {verdict?.kind === 'wrong' && <Button onClick={retry}>Try again</Button>}
+        {verdict?.kind === 'wrong' && <Button onClick={retry}>{t('Try again')}</Button>}
         {verdict?.kind === 'correct' && nextId && (
           <Link
             to={`${base}/tsumego/${nextId}`}
             className="inline-flex min-h-[50px] items-center justify-center rounded-xl bg-accent px-5 type-headline text-on-accent active:scale-[0.98] active:opacity-80"
           >
-            Next problem
+            {t('Next problem')}
           </Link>
         )}
         {verdict?.kind === 'correct' && (
           <Button variant="secondary" onClick={retry}>
-            Play it again
+            {t('Play it again')}
           </Button>
         )}
         {verdict?.kind !== 'correct' && !revealed && (
           <Button variant="secondary" onClick={reveal}>
-            Show the answer
+            {t('Show the answer')}
           </Button>
         )}
       </div>

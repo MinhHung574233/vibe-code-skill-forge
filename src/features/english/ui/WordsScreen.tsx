@@ -4,6 +4,7 @@ import { Chip } from '@/components/Chip';
 import { TextField } from '@/components/FormField';
 import { Screen } from '@/components/Screen';
 import { Section } from '@/components/Section';
+import { t } from '@/i18n/core';
 import { isWordLearned } from '../domain/srs';
 import { TOPIC_LABELS, WORDS, type WordTopic } from '../domain/vocabulary';
 import { useVocabProgress } from './useEnglish';
@@ -26,26 +27,26 @@ export function WordsScreen() {
   }, [query, topic]);
 
   return (
-    <Screen title="Words" back={{ to: '/practice/english', label: 'English' }}>
+    <Screen title={t('Words')} back={{ to: '/practice/english', label: t('English') }}>
       <TextField
-        label="Search"
+        label={t('Search')}
         type="search"
         value={query}
-        placeholder="English or Vietnamese"
+        placeholder={t('English or Vietnamese')}
         onChange={(event) => setQuery(event.target.value)}
       />
       <div className="mt-3 flex flex-wrap gap-2">
         <Chip selected={topic === null} onClick={() => setTopic(null)}>
-          All
+          {t('All')}
         </Chip>
-        {TOPICS.map((t) => (
-          <Chip key={t} selected={topic === t} onClick={() => setTopic(topic === t ? null : t)}>
-            {TOPIC_LABELS[t]}
+        {TOPICS.map((id) => (
+          <Chip key={id} selected={topic === id} onClick={() => setTopic(topic === id ? null : id)}>
+            {t(TOPIC_LABELS[id])}
           </Chip>
         ))}
       </div>
 
-      <Section footer={`${list.length} of ${WORDS.length} words`}>
+      <Section footer={t('{n} of {total} words', { n: list.length, total: WORDS.length })}>
         {list.map((word) => {
           const row = progress?.get(word.id);
           const status = !row ? 'New' : isWordLearned(row) ? 'Learned' : 'Learning';
@@ -62,7 +63,7 @@ export function WordsScreen() {
                   <span className="block type-body">{word.term}</span>
                   <span className="block type-subhead text-muted">{word.vi}</span>
                 </span>
-                <Badge tone={status === 'Learned' ? 'success' : 'neutral'}>{status}</Badge>
+                <Badge tone={status === 'Learned' ? 'success' : 'neutral'}>{t(status)}</Badge>
               </button>
               {open && (
                 <div className="space-y-2 px-4 pb-4">

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { AppError } from '@/core/errors';
 import type { Result } from '@/core/result';
+import { t } from '@/i18n/core';
 
 export const SKILL_CATEGORIES = ['mind', 'language', 'technical', 'games', 'custom'] as const;
 export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
@@ -15,6 +16,18 @@ export const CATEGORY_LABELS: Readonly<Record<SkillCategory, string>> = {
 
 export const PRIORITY_LABELS = { 1: 'High', 2: 'Medium', 3: 'Low' } as const;
 export type SkillPriority = 1 | 2 | 3;
+
+/** "High priority" etc. in the current language (one key per level: word order differs). */
+export function priorityText(priority: SkillPriority): string {
+  switch (priority) {
+    case 1:
+      return t('High priority');
+    case 2:
+      return t('Medium priority');
+    case 3:
+      return t('Low priority');
+  }
+}
 
 export interface Skill {
   id: string;

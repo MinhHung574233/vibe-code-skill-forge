@@ -7,6 +7,7 @@ import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
 import { Skeleton } from '@/components/Skeleton';
 import { getDb } from '@/db/boot';
+import { t } from '@/i18n/core';
 import type { CompletionOutcome } from '@/features/training/domain/session';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import { useTrainingEngine } from '@/features/training/ui/useTraining';
@@ -36,6 +37,7 @@ import {
 } from '../domain/rules';
 import { ChessBoard, type BoardFeedback } from './ChessBoard';
 import { PromotionSheet } from './PromotionSheet';
+import { sideName } from './labels';
 import { CHESS_BASE } from './useChess';
 
 const REPLY_DELAY_MS = 500;
@@ -69,7 +71,7 @@ export function PuzzlesScreen() {
   }, []);
   useEffect(() => {
     const pending = timers.current;
-    return () => pending.forEach((t) => window.clearTimeout(t));
+    return () => pending.forEach((id) => window.clearTimeout(id));
   }, []);
 
   const begin = useCallback((puzzleRun: PuzzleRun, isPractice: boolean) => {
@@ -89,7 +91,9 @@ export function PuzzlesScreen() {
     void Promise.all([loadPuzzleProgress(getDb()), loadRatings(getDb())]).then(
       ([progress, ratings]) => {
         if (cancelled) return;
-        const solved = new Set([...progress.values()].filter((p) => p.solved === 1).map((p) => p.puzzleId));
+        const solved = new Set(
+          [...progress.values()].filter((p) => p.solved === 1).map((p) => p.puzzleId),
+        );
         solvedRef.current = solved;
         setReady(true);
         setRating(ratings.puzzle);
@@ -140,7 +144,7 @@ export function PuzzlesScreen() {
       const clean = isCleanSolve(solvedRun);
       setMessage({
         tone: 'good',
-        text: clean ? 'Solved! Well spotted.' : 'Solved. Try the next one without help.',
+        text: clean ? t('Solved! Well spotted.') : t('Solved. Try the next one without help.'),
       });
       if (!result.firstSolve) return;
       // XP is idempotent per puzzle id in the engine, so a replay can never farm it
@@ -177,7 +181,7 @@ export function PuzzlesScreen() {
         setRun(result.run);
         setFeedback({ square: to, tone: 'bad' });
         later(() => setFeedback(null), FEEDBACK_MS);
-        setMessage({ tone: 'bad', text: 'That is not the move. Try again.' });
+        setMessage({ tone: 'bad', text: t('That is not the move. Try again.') });
         storeFailure(result.run);
         return;
       }
@@ -187,7 +191,7 @@ export function PuzzlesScreen() {
       if (result.run.status === 'solved') {
         void onSolved(result.run);
       } else {
-        setMessage({ tone: 'good', text: 'Correct. Keep going.' });
+        setMessage({ tone: 'good', text: t('Correct. Keep going.') });
         later(() => setRun((current) => (current ? applyReply(current) : current)), REPLY_DELAY_MS);
       }
     },
@@ -207,15 +211,15 @@ export function PuzzlesScreen() {
   // "show solution": play the stored moves one by one
   useEffect(() => {
     if (!revealing || !run || run.status !== 'playing') return;
-    const t = window.setTimeout(() => setRun((r) => (r ? revealStep(r) : r)), REVEAL_DELAY_MS);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setRun((r) => (r ? revealStep(r) : r)), REVEAL_DELAY_MS);
+    return () => window.clearTimeout(timer);
   }, [revealing, run]);
 
   const onReveal = () => {
     if (!run || run.status !== 'playing') return;
     storeFailure(run);
     setRevealing(true);
-    setMessage({ tone: 'info', text: 'Here is the solution. It will not count as solved.' });
+    setMessage({ tone: 'info', text: t('Here is the solution. It will not count as solved.') });
   };
 
   const onNext = () => {
@@ -235,11 +239,11 @@ export function PuzzlesScreen() {
   const yourTurn = run?.status === 'playing' && run.ply % 2 === 0 && !revealing;
   const goalText =
     run?.puzzle.goal.type === 'mate'
-      ? `Find mate in ${run.puzzle.goal.in}`
-      : 'Win material';
+      ? t('find mate in {n}', { n: run.puzzle.goal.in })
+      : t('win material');
 
   return (
-    <Screen title="Puzzles" back={{ to: CHESS_BASE, label: 'Chess' }}>
+    <Screen title={t('Puzzles')} back={{ to: CHESS_BASE, label: t('Chess') }}>
       {!ready || !run || !chess ? (
         <div className="space-y-3" aria-busy="true">
           <Skeleton className="aspect-square w-full rounded-xl" />
@@ -249,12 +253,14 @@ export function PuzzlesScreen() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="type-headline">
-                {solverColor === 'w' ? 'White' : 'Black'} to move: {goalText.toLowerCase()}
+                {t('{color} to move: {goal}', { color: sideName(solverColor), goal: goalText })}
               </p>
-              <p className="type-footnote text-muted">Difficulty {run.puzzle.rating}</p>
+              <p className="type-footnote text-muted">
+                {t('Difficulty {n}', { n: run.puzzle.rating })}
+              </p>
             </div>
             <div className="text-right">
-              <p className="type-footnote text-muted">Your rating</p>
+              <p className="type-footnote text-muted">{t('Your rating')}</p>
               <p className="type-headline tabular-nums">
                 {rating?.value ?? 1000}
                 {ratingDelta !== null && (
@@ -277,7 +283,7 @@ export function PuzzlesScreen() {
             checkSquare={checkedKingSquare(chess)}
             hints={run.hintSquares}
             feedback={feedback}
-            label="Puzzle board"
+            label={t('Puzzle board')}
           />
 
           <div role="status" aria-live="polite" className="min-h-[1.5rem]">
@@ -299,15 +305,16 @@ export function PuzzlesScreen() {
           {finished && (
             <Card>
               <div className="flex flex-wrap items-center gap-2">
-                {run.puzzle.themes.map((t) => (
-                  <Chip key={t}>{THEME_LABELS[t]}</Chip>
+                {run.puzzle.themes.map((theme) => (
+                  <Chip key={theme}>{t(THEME_LABELS[theme])}</Chip>
                 ))}
-                {practice && <Badge tone="neutral">Practice, no XP</Badge>}
+                {practice && <Badge tone="neutral">{t('Practice, no XP')}</Badge>}
               </div>
               {run.puzzle.goal.type === 'material' && (
                 <p className="mt-2 type-subhead text-muted">
-                  The idea wins {run.puzzle.goal.gain} pawns of material once the opponent has
-                  replied.
+                  {t('The idea wins {gain} pawns of material once the opponent has replied.', {
+                    gain: run.puzzle.goal.gain,
+                  })}
                 </p>
               )}
             </Card>
@@ -317,7 +324,7 @@ export function PuzzlesScreen() {
             {finished ? (
               <div className="col-span-2">
                 <Button fullWidth onClick={onNext}>
-                  Next puzzle
+                  {t('Next puzzle')}
                 </Button>
               </div>
             ) : (
@@ -327,20 +334,20 @@ export function PuzzlesScreen() {
                   disabled={run.status !== 'playing' || revealing || run.hintSquares.length >= 2}
                   onClick={() => setRun(giveHint(run))}
                 >
-                  {run.hintSquares.length === 0 ? 'Hint' : 'More hint'}
+                  {run.hintSquares.length === 0 ? t('Hint') : t('More hint')}
                 </Button>
                 <Button
                   variant="ghost"
                   disabled={run.status !== 'playing' || revealing}
                   onClick={onReveal}
                 >
-                  Show solution
+                  {t('Show solution')}
                 </Button>
               </>
             )}
           </div>
           <p className="type-footnote text-muted">
-            Hints and a shown solution count against the first attempt at a puzzle.
+            {t('Hints and a shown solution count against the first attempt at a puzzle.')}
           </p>
         </div>
       )}

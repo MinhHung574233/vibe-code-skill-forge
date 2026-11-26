@@ -79,6 +79,10 @@ Chosen conservatively where "latest" has an ecosystem gap (TypeScript). No exper
 
 **D-38 Puzzles and problems are proven, not trusted.** Chess puzzles are checked by the engine and by exhaustive search (mate depth, uniqueness, material gain); Go problems by exhaustive search with Benson-alive/capture definitions. Items that failed verification were fixed or dropped rather than shipped.
 
+**D-39 Localisation without a library.** `t(englishSource, params)` in `src/i18n/core.ts` (pure, no React) with the English text as the key; per-area Vietnamese dictionaries; a `LanguageBoundary` remount on change; the dictionary is code-split and loaded before first render only for Vietnamese. Chosen over i18next because the app has two languages and no plural rules to share (Vietnamese has none), the key-is-the-text rule keeps English output identical and tests unchanged, and build-time tests enforce coverage. Reconsider if a third language with plural forms is added.
+
+**D-40 Accessibility is audited by machine and by hand.** axe-core (WCAG 2.1 A/AA) runs over every screen in both themes and both languages in the e2e suite; what axe cannot judge (VoiceOver order, gestures, board play by touch) stays on the real-device checklist.
+
 **D-5 Content bundled into lazy chunks, precached.** "Content download" = the install precache; no runtime fetch of content. Validated by Zod in tests. Budget: precache ≤ 15 MB, initial JS ≤ 250 kB gzip.
 
 **D-6 Offline-readiness verification.** Build emits `offline-manifest.json`; the client checks every URL in `caches` and exposes Repair. iOS can evict caches independently of IndexedDB.

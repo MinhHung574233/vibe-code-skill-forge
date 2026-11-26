@@ -1,5 +1,6 @@
 import type { Clock } from '@/core/time/clock';
 import type { SkillForgeDB } from '@/db/schema';
+import { t } from '@/i18n/core';
 import type { CompletionOutcome, TrainingEngine } from '@/features/training/domain/session';
 import { stoneCount, type GameState } from '../domain/game';
 import { MIN_PLAYER_MOVES_FOR_SESSION, outcomeOf, type CaroDraft } from '../domain/play';
@@ -33,7 +34,7 @@ export async function finishGame(
   game: GameState,
 ): Promise<FinishResult> {
   const outcome = outcomeOf(game.status, draft.humanStone);
-  if (!outcome) return { ok: false, message: 'The game is not finished.' };
+  if (!outcome) return { ok: false, message: t('The game is not finished.') };
 
   const endedAt = deps.clock.now();
   const startedAt = Math.min(
@@ -54,7 +55,7 @@ export async function finishGame(
       endedAt,
     });
   } catch {
-    return { ok: false, message: 'Could not save the game result. Try again.' };
+    return { ok: false, message: t('Could not save the game result. Try again.') };
   }
 
   let session: CompletionOutcome | null = null;
@@ -69,14 +70,14 @@ export async function finishGame(
       score: outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0,
       result: { game: 'caro', level: draft.level, outcome },
     });
-    if (!recorded.ok) return { ok: false, message: recorded.error.message };
+    if (!recorded.ok) return { ok: false, message: t(recorded.error.message) };
     session = recorded.value;
   }
 
   try {
     await clearDraft(deps.db);
   } catch {
-    return { ok: false, message: 'Could not clear the saved game. Try again.' };
+    return { ok: false, message: t('Could not clear the saved game. Try again.') };
   }
   return { ok: true, session };
 }

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { t } from '@/i18n/core';
 import { Button } from './Button';
 
 interface ConfirmDialogProps {
@@ -19,7 +20,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   destructive = false,
   onConfirm,
   onCancel,
@@ -57,7 +58,7 @@ export function ConfirmDialog({
           {confirmLabel}
         </Button>
         <Button variant="ghost" onClick={onCancel} autoFocus={destructive}>
-          {cancelLabel}
+          {cancelLabel ?? t('Cancel')}
         </Button>
       </div>
     </dialog>

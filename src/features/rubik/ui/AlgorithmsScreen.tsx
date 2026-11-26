@@ -3,6 +3,7 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
+import { t } from '@/i18n/core';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import {
   algorithmsInSet,
@@ -18,6 +19,7 @@ const SETS = [
   { value: 'oll', label: '2-look OLL' },
 ] as const;
 
+/** English keys; translated where shown. */
 const STATUS_LABEL = { learning: 'Learning', learned: 'Learned' } as const;
 
 function AlgorithmCard({ alg }: { alg: AlgorithmDef }) {
@@ -29,21 +31,21 @@ function AlgorithmCard({ alg }: { alg: AlgorithmDef }) {
   return (
     <Card className="mt-3">
       <div className="flex gap-3">
-        <CaseView diagram={diagram} label={`Case picture for ${alg.name}`} />
+        <CaseView diagram={diagram} label={t('Case picture for {name}', { name: t(alg.name) })} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="type-headline">{alg.name}</h3>
-            {status && <Badge>{STATUS_LABEL[status]}</Badge>}
+            <h3 className="type-headline">{t(alg.name)}</h3>
+            {status && <Badge>{t(STATUS_LABEL[status])}</Badge>}
           </div>
           <p
             className="mt-1 break-words font-mono type-callout"
-            aria-label={`Moves for ${alg.name}`}
+            aria-label={t('Moves for {name}', { name: t(alg.name) })}
           >
             {alg.moves}
           </p>
         </div>
       </div>
-      <p className="mt-3 type-subhead text-muted">{alg.recognise}</p>
+      <p className="mt-3 type-subhead text-muted">{t(alg.recognise)}</p>
       <div className="mt-3 flex gap-2">
         <Button
           size="sm"
@@ -53,7 +55,7 @@ function AlgorithmCard({ alg }: { alg: AlgorithmDef }) {
             void service.setAlgorithmStatus(alg.id, status === 'learning' ? null : 'learning')
           }
         >
-          Learning
+          {t('Learning')}
         </Button>
         <Button
           size="sm"
@@ -63,7 +65,7 @@ function AlgorithmCard({ alg }: { alg: AlgorithmDef }) {
             void service.setAlgorithmStatus(alg.id, status === 'learned' ? null : 'learned')
           }
         >
-          Learned
+          {t('Learned')}
         </Button>
       </div>
     </Card>
@@ -77,11 +79,18 @@ export function AlgorithmsScreen() {
   const learned = list.filter((a) => progress?.get(a.id) === 'learned').length;
 
   return (
-    <Screen title="Algorithms" back={{ to: '/practice/rubik', label: 'Rubik' }}>
-      <SegmentedControl options={SETS} value={set} onChange={setSet} label="Algorithm set" />
+    <Screen title={t('Algorithms')} back={{ to: '/practice/rubik', label: t('Rubik') }}>
+      <SegmentedControl
+        options={SETS.map((o) => ({ value: o.value, label: t(o.label) }))}
+        value={set}
+        onChange={setSet}
+        label={t('Algorithm set')}
+      />
       <p className="mt-3 px-1 type-subhead text-muted">
-        {learned} of {list.length} learned. Notation is for a yellow-top cube with green in front.
-        The pictures show the case each algorithm solves.
+        {t(
+          '{learned} of {total} learned. Notation is for a yellow-top cube with green in front. The pictures show the case each algorithm solves.',
+          { learned, total: list.length },
+        )}
       </p>
       {list.map((alg) => (
         <AlgorithmCard key={alg.id} alg={alg} />
