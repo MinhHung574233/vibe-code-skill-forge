@@ -1,35 +1,55 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { cn } from '@/utils/cn';
-import { IDLE, step, type TimerEvent, type TimerState } from '../domain/timerMachine';
-import { formatSolveTime } from '../domain/stats';
+import {
+  IDLE,
+  INSPECTION_DNF_MS,
+  INSPECTION_MS,
+  step,
+  type TimerEvent,
+  type TimerState,
+} from '../domain/timerMachine';
+import { formatSolveTime, type Penalty } from '../domain/stats';
 
 interface TimerPadProps {
-  /** Called once when the timer is stopped, with the raw time. */
-  onFinish: (timeMs: number) => void;
+  /** Called once when the timer is stopped, with the raw time and any inspection penalty. */
+  onFinish: (timeMs: number, penalty: Penalty) => void;
   /** Shown while idle (the previous solve), in milliseconds. */
   lastMs: number | null;
+  /** 15 s inspection before each solve (WCA rules). */
+  inspection: boolean;
+}
+
+/** What the big number shows during inspection: seconds left, then +2 / DNF. */
+function inspectionText(elapsedMs: number): string {
+  if (elapsedMs > INSPECTION_DNF_MS) return 'DNF';
+  if (elapsedMs > INSPECTION_MS) return '+2';
+  return String(Math.ceil((INSPECTION_MS - elapsedMs) / 1000));
 }
 
 /**
  * The big touch target. Hold until it turns green, release to start, touch anywhere on it to
- * stop. It also works with the space bar. Display updates run on animation frames only while
- * the timer is running.
+ * stop. With inspection on, the first touch starts a 15 second countdown first. It also works
+ * with the space bar. The display updates on animation frames only while something is counting.
  */
-export function TimerPad({ onFinish, lastMs }: TimerPadProps) {
+export function TimerPad({ onFinish, lastMs, inspection }: TimerPadProps) {
   const [state, setState] = useState<TimerState>(IDLE);
   const stateRef = useRef<TimerState>(IDLE);
   const onFinishRef = useRef(onFinish);
+  const inspectionRef = useRef(inspection);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     onFinishRef.current = onFinish;
-  }, [onFinish]);
+    inspectionRef.current = inspection;
+  }, [onFinish, inspection]);
 
   const send = useCallback((event: TimerEvent) => {
-    const result = step(stateRef.current, event);
+    const result = step(stateRef.current, event, { inspection: inspectionRef.current });
     stateRef.current = result.state;
     setState(result.state);
-    if (result.finishedMs !== undefined) onFinishRef.current(result.finishedMs);
+    if (result.finishedMs !== undefined) {
+      onFinishRef.current(result.finishedMs, result.penalty ?? 'none');
+    }
   }, []);
 
   // Become "ready" once the hold time has passed.
@@ -39,17 +59,20 @@ export function TimerPad({ onFinish, lastMs }: TimerPadProps) {
     return () => window.clearTimeout(timer);
   }, [state, send]);
 
-  // Animate the clock only while running.
+  // Animate the clock while running, or the countdown while inspecting.
+  const inspectionStart = state.phase === 'inspecting' ? state.since : undefined;
+  const counting = state.phase === 'running' || state.phase === 'inspecting';
   useEffect(() => {
-    if (state.phase !== 'running') return;
+    if (!counting) return;
     let frame = 0;
+    const origin = state.phase === 'running' ? state.startedAt : (inspectionStart ?? 0);
     const loop = () => {
-      setElapsed(performance.now() - state.startedAt);
+      setElapsed(performance.now() - origin);
       frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [state]);
+  }, [counting, state, inspectionStart]);
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.code !== 'Space' || event.repeat) return;
@@ -65,20 +88,26 @@ export function TimerPad({ onFinish, lastMs }: TimerPadProps) {
   const text =
     state.phase === 'running'
       ? formatSolveTime(elapsed)
-      : state.phase === 'holding' || state.phase === 'ready'
-        ? '0.00'
-        : lastMs === null
+      : state.phase === 'inspecting'
+        ? inspectionText(elapsed)
+        : state.phase === 'holding' || state.phase === 'ready'
           ? '0.00'
-          : formatSolveTime(lastMs);
+          : lastMs === null
+            ? '0.00'
+            : formatSolveTime(lastMs);
 
   const hint =
     state.phase === 'idle'
-      ? 'Touch and hold, then let go to start'
-      : state.phase === 'holding'
-        ? 'Keep holding…'
-        : state.phase === 'ready'
-          ? 'Let go to start'
-          : 'Touch to stop';
+      ? inspection
+        ? 'Touch to start the 15 second inspection'
+        : 'Touch and hold, then let go to start'
+      : state.phase === 'inspecting'
+        ? 'Inspecting. Touch and hold, then let go to start'
+        : state.phase === 'holding'
+          ? 'Keep holding…'
+          : state.phase === 'ready'
+            ? 'Let go to start'
+            : 'Touch to stop';
 
   return (
     <div
@@ -100,6 +129,7 @@ export function TimerPad({ onFinish, lastMs }: TimerPadProps) {
         'focus-visible:ring-2 focus-visible:ring-accent',
         'bg-surface',
         state.phase === 'idle' && 'border-border',
+        state.phase === 'inspecting' && 'border-warning',
         state.phase === 'holding' && 'border-danger',
         state.phase === 'ready' && 'border-success',
         state.phase === 'running' && 'border-accent',

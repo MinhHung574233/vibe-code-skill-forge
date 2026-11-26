@@ -248,3 +248,21 @@ for (const scheme of ['light', 'dark'] as const) {
     await shoot('progress');
   });
 }
+
+test('deleting a logged session removes its minutes and streak credit', async ({ page }) => {
+  await launchApp(page);
+  await logSession(page, { minutes: 30 });
+  await goTab(page, 'Home');
+  await expect(page.getByText('1-day streak')).toBeVisible();
+
+  await goTab(page, 'Progress');
+  await page.getByRole('button', { name: /^Delete Practice session/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Delete this session?' })
+    .getByRole('button', { name: 'Delete' })
+    .click();
+
+  await goTab(page, 'Home');
+  await expect(page.getByText('No streak yet')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Today' }).getByText('0/20')).toBeVisible();
+});

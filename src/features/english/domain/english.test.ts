@@ -11,7 +11,16 @@ import {
   review,
   vocabStats,
 } from './srs';
+import { buildQuiz, shuffle } from './quiz';
 import { WORDS, wordById } from './vocabulary';
+
+function seeded(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a = (a * 1664525 + 1013904223) % 4294967296;
+    return a / 4294967296;
+  };
+}
 
 const NOW = 1_800_000_000_000;
 
@@ -145,5 +154,42 @@ describe('study queue', () => {
       dueNow: 1,
       unseen: WORDS.length - 2,
     });
+  });
+});
+
+describe('quiz', () => {
+  it('builds the requested number of questions with four distinct options, one right', () => {
+    const quiz = buildQuiz(WORDS, 10, seeded(1));
+    expect(quiz).toHaveLength(10);
+    expect(new Set(quiz.map((q) => q.wordId)).size).toBe(10);
+    for (const q of quiz) {
+      expect(q.options).toHaveLength(4);
+      expect(new Set(q.options).size).toBe(4);
+      const word = wordById(q.wordId);
+      expect(q.options[q.correct]).toBe(word?.term);
+      expect(q.prompt).toBe(word?.definition);
+    }
+  });
+
+  it('prefers distractors from the same topic', () => {
+    const quiz = buildQuiz(WORDS, 20, seeded(2));
+    for (const q of quiz) {
+      const topic = wordById(q.wordId)?.topic;
+      const sameTopicOptions = q.options.filter(
+        (term) => WORDS.find((w) => w.term === term)?.topic === topic,
+      );
+      expect(sameTopicOptions.length).toBe(4); // every topic has far more than 4 words
+    }
+  });
+
+  it('is reproducible with a seed, different with another, and handles tiny inputs', () => {
+    expect(buildQuiz(WORDS, 5, seeded(3))).toEqual(buildQuiz(WORDS, 5, seeded(3)));
+    expect(buildQuiz(WORDS, 5, seeded(3))).not.toEqual(buildQuiz(WORDS, 5, seeded(4)));
+    expect(buildQuiz(WORDS, 0)).toEqual([]);
+    expect(buildQuiz(WORDS.slice(0, 2), 5, seeded(5))).toHaveLength(2);
+  });
+
+  it('shuffle keeps every item', () => {
+    expect([...shuffle([1, 2, 3, 4, 5], seeded(9))].sort()).toEqual([1, 2, 3, 4, 5]);
   });
 });

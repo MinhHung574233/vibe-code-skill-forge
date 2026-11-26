@@ -84,6 +84,12 @@ export function EnglishHome() {
         footer="A word counts as learned after you recall it three times in a row over several days. New words per day: 10."
       >
         <ListRow
+          title="Quick quiz"
+          subtitle="10 questions: match the definition to the term. Practice only."
+          icon="target"
+          to="quiz"
+        />
+        <ListRow
           title="Browse all words"
           subtitle={`${WORDS.length} IT terms with definitions, examples and Vietnamese`}
           icon="search"

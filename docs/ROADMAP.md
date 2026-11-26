@@ -53,7 +53,7 @@ A milestone closes only when `npm run verify` is green, the production build suc
 | 2026-11-25 | Phase 2 `npm run verify:full` | ✅ tsc · eslint · vitest 38 files / 367 tests · build (precache 66 entries, 910 KiB; main JS 201 kB gzip, budget 250 kB) · Playwright 32/32 |
 | 2026-11-25 | Phase 2 e2e journeys | ✅ add suggested skills → set weekly goal → log 3 sessions (today and past days) → Home shows 45/20, 3-day streak, goal reached, skill progress → timed session (seeded running timer) earns +10 XP once → Progress shows totals, consistency 43%, time-by-skill, achievements, history → all survive reload; backup contains sessions/completions/dailySummary/achievements and restores to the same Home numbers; streak-rule switch changes the streak; works offline; light/dark screenshots reviewed |
 | 2026-11-25 | M3.1–M3.4 | ✅ unit/UI tests for cube model (6), algorithms (6, simulation-verified), stats and scrambles (12), timer protocol (5), Rubik service (6), Rubik UI (7), English (18), lessons/content/tips (20); e2e `modules.spec.ts` 7/7 including all four modules offline |
-| 2026-11-25 | M3.5–M3.7 + full run | ✅ tsc · eslint · vitest 80 files / 914 tests · build (precache 78 entries, 1.2 MiB) · Playwright 47/47 (includes Caro, Chess and Go journeys, the module workers under the local production CSP, and every module offline). Caro 98, Chess 178, Go 189 unit/UI tests |
+| 2026-11-25 | M3.5–M3.7 + full run | ✅ tsc · eslint · vitest 80 files / 930 tests · build (precache 78 entries, 1.2 MiB) · Playwright 48/48 (includes Caro, Chess and Go journeys, the module workers under the local production CSP, and every module offline). Caro 98, Chess 178, Go 189 unit/UI tests |
 | 2026-11-25 | Real iPhone (installed app, Cloudflare URL) | ✅ owner reported it works (no per-item checklist recorded; still to do: IOS_PWA §8 items 8–10 for the timer and the 8-day idle test) |
 | 2026-11-22 | Playwright WebKit | ⬜ not installed (needs `npx playwright install webkit`, a browser download; opt-in with `E2E_WEBKIT=1`) |
 
@@ -76,8 +76,8 @@ Schema v3 adds seven stores (`rubikSolves`, `algorithmProgress`, `vocabProgress`
 - **Not verified on a real iPhone for the games**: tap accuracy on small boards, speed of the AI on a phone (expect 3–4× slower than the desktop figures), Unicode chess glyphs, the three module Web Workers under the production CSP on the deployed site. Chess opening-drill progress is not persisted. A failed save of a finished game shows an error without a retry button.
 
 **Known gaps vs the M3 scope table (intentional, not hidden):**
-- Rubik: no per-skill goals or notes, no inspection countdown, no device timer calibration; scrambles are random-move (not WCA random-state); no OLL beyond 2-look.
-- English: 120 words (target was 300+), no quiz mode, favourites, collections or custom words.
+- Rubik: no per-skill goals or notes, no device timer calibration (inspection countdown with +2/DNF was added later: optional, off by default); scrambles are random-move (not WCA random-state); no OLL beyond 2-look.
+- English: 120 words (target was 300+), no favourites, collections or custom words. A 10-question recognition quiz exists but is practice only (no XP, no effect on the review schedule).
 - Java: 3 paths / 12 lessons (target was 5 tracks), no coding challenges, bookmarks or notes. Tools: no bookmarks.
 - Lesson and word content was written for this app and checked for structure and internal consistency by tests; it has not been reviewed by a second person.
 
@@ -92,7 +92,7 @@ Schema v3 adds seven stores (`rubikSolves`, `algorithmProgress`, `vocabProgress`
 ### Known gaps in Phase 2 (intentional)
 - Module-bound achievements (100 words, Java path, Rubik PB) stay locked and say which module they need; their `UserFacts` are 0 until Phase 3.
 - No `dailyGoals` store: the daily goal is the single `dailyGoalMinutes` setting and per-skill goals are weekly minutes. Session-count and per-skill daily goals from the PRD are not built.
-- Sessions cannot be edited or deleted individually yet (needs rollup/XP reversal rules).
+- Practice sessions can be deleted (engine reverses completion, XP and the day's rollup in one transaction; unlocked achievements stay). They cannot be edited, and module activities (lessons, puzzles, games) cannot be deleted because their progress lives elsewhere.
 - No XP rule editor UI (rules can be overridden in data only).
 - No edge-swipe-back gesture on pushed screens (a visible back button exists).
 - Donut slice hues are told apart by name in the legend, not by colour alone, but some hues are below 3:1 against white.

@@ -60,6 +60,27 @@ describe('Rubik timer', () => {
     await waitFor(async () => expect(await getDb().rubikSolves.count()).toBe(0));
   });
 
+  it('with inspection on, the first touch starts the countdown and the solve follows', async () => {
+    renderAt('/practice/rubik');
+    const pad = await screen.findByRole('button', { name: /Cube timer/ });
+    await userEvent.click(screen.getByRole('button', { name: 'Inspection' }));
+    expect(screen.getByRole('button', { name: 'Inspection' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(pad).toHaveAccessibleName(/15 second inspection/);
+
+    fireEvent.keyDown(pad, { code: 'Space' }); // starts inspection
+    fireEvent.keyUp(pad, { code: 'Space' });
+    expect(await screen.findByRole('timer', { name: 'Solve time' })).toHaveTextContent(/^1[45]$/);
+
+    await solveOnce(pad); // hold, release to start, press to stop
+    await waitFor(async () => expect(await getDb().rubikSolves.count()).toBe(1));
+    expect((await getDb().rubikSolves.toArray())[0]?.penalty).toBe('none');
+    expect(localStorage.getItem('sf-rubik-inspection')).toBe('1');
+    localStorage.removeItem('sf-rubik-inspection');
+  });
+
   it('shows the scramble as a cube picture on request', async () => {
     renderAt('/practice/rubik');
     await userEvent.click(await screen.findByRole('button', { name: 'Show cube' }));

@@ -159,3 +159,40 @@ describe('Progress', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('Deleting a session', () => {
+  it('asks first, then removes the session and what it earned', async () => {
+    const skill = await createSkill('Chess basics');
+    await recordSession({ skillId: skill.id, minutes: 12 });
+    renderAt(`/skills/${skill.id}`);
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^Delete Chess basics session/ }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this session?' });
+    // Cancelling changes nothing.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(await getDb().sessions.count()).toBe(1);
+
+    await userEvent.click(screen.getByRole('button', { name: /^Delete Chess basics session/ }));
+    await userEvent.click(
+      within(await screen.findByRole('dialog', { name: 'Delete this session?' })).getByRole(
+        'button',
+        {
+          name: 'Delete',
+        },
+      ),
+    );
+    await waitFor(async () => expect(await getDb().sessions.count()).toBe(0));
+    expect(await getDb().xpLedger.count()).toBe(0);
+    expect(await getDb().dailySummary.count()).toBe(0);
+  });
+
+  it('offers no delete button for module activities', async () => {
+    await recordSession({ activityType: 'rubik_session', moduleId: 'rubik', minutes: 3 });
+    renderAt('/progress');
+    await screen.findByRole('heading', { name: 'Progress', level: 1 });
+    await waitFor(() => expect(screen.getAllByText(/Rubik session/).length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull();
+  });
+});

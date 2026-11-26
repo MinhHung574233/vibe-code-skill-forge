@@ -21,6 +21,7 @@ import {
   sessionActivityKey,
   type CompletionOutcome,
   type RecordSessionInput,
+  type SessionManager,
   type TrainingEngine,
 } from '../domain/session';
 
@@ -67,7 +68,7 @@ async function rewardFor(
   return { xp };
 }
 
-export class DexieTrainingEngine implements TrainingEngine {
+export class DexieTrainingEngine implements TrainingEngine, SessionManager {
   constructor(
     private readonly db: SkillForgeDB,
     private readonly clock: Pick<Clock, 'now'>,
@@ -89,6 +90,44 @@ export class DexieTrainingEngine implements TrainingEngine {
     try {
       const outcome = await this.db.transaction('rw', tables(this.db), () => this.apply(s));
       return ok(outcome);
+    } catch (cause) {
+      return err(toAppError(cause));
+    }
+  }
+
+  async deleteSession(id: string): Promise<Result<void, AppError>> {
+    try {
+      await this.db.transaction('rw', tables(this.db), async () => {
+        const session = await this.db.sessions.get(id);
+        if (!session) throw new AppError('VALIDATION', 'That session no longer exists.');
+        if (session.activityType !== 'practice_session') {
+          throw new AppError('VALIDATION', 'Only practice sessions can be deleted.');
+        }
+        const key = sessionActivityKey(id);
+        const earned = await this.db.xpLedger.where('activityKey').equals(key).toArray();
+        const xp = earned.reduce((sum, row) => sum + row.xp, 0);
+
+        await this.db.xpLedger.where('activityKey').equals(key).delete();
+        await this.db.completions.delete(key);
+        await this.db.sessions.delete(id);
+
+        const day = await this.db.dailySummary.get(session.localDate);
+        if (day) {
+          const sessions = Math.max(0, day.sessions - 1);
+          if (sessions === 0 && day.activities - 1 <= 0) {
+            await this.db.dailySummary.delete(session.localDate);
+          } else {
+            await this.db.dailySummary.put({
+              localDate: session.localDate,
+              durationSec: Math.max(0, day.durationSec - session.durationSec),
+              sessions,
+              activities: Math.max(0, day.activities - 1),
+              xp: day.xp - xp,
+            });
+          }
+        }
+      });
+      return ok(undefined);
     } catch (cause) {
       return err(toAppError(cause));
     }

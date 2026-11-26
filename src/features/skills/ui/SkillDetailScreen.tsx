@@ -107,6 +107,7 @@ export function SkillDetailScreen() {
             sessions={sessions.slice(0, 20)}
             skillNames={new Map([[skill.id, skill.name]])}
             today={trained?.overview.today ?? ''}
+            deletable
           />
         )}
       </Section>

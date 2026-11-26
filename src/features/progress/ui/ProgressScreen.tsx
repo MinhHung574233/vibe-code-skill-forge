@@ -215,7 +215,7 @@ export function ProgressScreen() {
             description="Finished sessions are listed here, newest first."
           />
         ) : (
-          <SessionList sessions={recent} skillNames={skillNames} today={today} />
+          <SessionList sessions={recent} skillNames={skillNames} today={today} deletable />
         )}
       </Section>
     </Screen>

@@ -60,5 +60,15 @@ export interface TrainingEngine {
   recordSession(input: RecordSessionInput): Promise<Result<CompletionOutcome, AppError>>;
 }
 
+/** Managing recorded sessions (kept apart so modules only depend on recording). */
+export interface SessionManager {
+  /**
+   * Removes a generic practice session and everything it earned (completion, XP, its share of
+   * the day's rollup) in ONE transaction. Module activities cannot be deleted: their progress
+   * (a solved puzzle, a completed lesson) lives elsewhere and would no longer match.
+   */
+  deleteSession(id: string): Promise<Result<void, AppError>>;
+}
+
 /** Stable idempotency key for a session. */
 export const sessionActivityKey = (sessionId: string): string => `session:${sessionId}`;

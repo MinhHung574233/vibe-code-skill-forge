@@ -125,3 +125,26 @@ describe('Achievement: 100 learned words', () => {
     expect(result.ok && result.value.newAchievementIds).toContain('vocab_100');
   });
 });
+
+describe('Quiz', () => {
+  it('asks 10 questions, gives feedback, ends with a score, and records nothing', async () => {
+    renderAt('/practice/english/quiz');
+    for (let i = 1; i <= 10; i++) {
+      expect(await screen.findByText(`Question ${i} of 10`)).toBeInTheDocument();
+      const answers = within(screen.getByRole('group', { name: 'Answers' })).getAllByRole('button');
+      await userEvent.click(answers[0]!);
+      // One option is marked correct once you answer.
+      expect(screen.getByText('Correct')).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole('button', { name: i === 10 ? 'See result' : 'Next question' }),
+      );
+    }
+    expect(await screen.findByText(/of 10 correct/)).toBeInTheDocument();
+    expect(screen.getByText(/do not change your review schedule or earn XP/)).toBeInTheDocument();
+    expect(await getDb().vocabProgress.count()).toBe(0);
+    expect(await getDb().sessions.count()).toBe(0);
+
+    await userEvent.click(screen.getByRole('button', { name: 'New quiz' }));
+    expect(await screen.findByText('Question 1 of 10')).toBeInTheDocument();
+  });
+});

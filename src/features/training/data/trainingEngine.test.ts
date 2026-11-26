@@ -333,3 +333,69 @@ describe('validation', () => {
     await expectInvalid({ ...session('x'), score: 1.5 });
   });
 });
+
+describe('deleting a session', () => {
+  async function record(input: RecordSessionInput) {
+    const result = await engine.recordSession(input);
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  }
+
+  it('removes the session, its XP and its share of the day, leaving other sessions alone', async () => {
+    await record(session('a', { minutes: 10 })); // 10 XP
+    await record(session('b', { minutes: 20, endHour: 14 })); // 10 XP
+    expect(await db.xpLedger.count()).toBe(2);
+
+    const result = await engine.deleteSession('a');
+    expect(result.ok).toBe(true);
+
+    expect(await db.sessions.get('a')).toBeUndefined();
+    expect(await db.completions.get('session:a')).toBeUndefined();
+    expect(await db.xpLedger.count()).toBe(1);
+    expect(await db.dailySummary.get('2026-11-25')).toMatchObject({
+      durationSec: 20 * 60,
+      sessions: 1,
+      activities: 1,
+      xp: 10,
+    });
+    expect(await db.sessions.get('b')).toBeDefined();
+  });
+
+  it('removes the whole day when its only session is deleted, so the streak drops', async () => {
+    await record(session('only', { date: '2026-11-24' }));
+    await record(session('today', { date: '2026-11-25' }));
+    await engine.deleteSession('only');
+    expect(await db.dailySummary.get('2026-11-24')).toBeUndefined();
+    expect((await db.dailySummary.toArray()).map((d) => d.localDate)).toEqual(['2026-11-25']);
+  });
+
+  it('allows the same session id to be recorded again afterwards', async () => {
+    await record(session('again'));
+    await engine.deleteSession('again');
+    const second = await record(session('again'));
+    expect(second.duplicate).toBe(false);
+    expect(second.xpAwarded).toBe(10);
+  });
+
+  it('refuses unknown sessions and module activities, changing nothing', async () => {
+    const missing = await engine.deleteSession('nope');
+    expect(!missing.ok && missing.error.code).toBe('VALIDATION');
+
+    await record(session('lesson', { activityType: 'java_lesson', moduleId: 'java', minutes: 1 }));
+    const module = await engine.deleteSession('lesson');
+    expect(!module.ok && module.error.message).toMatch(/Only practice sessions/);
+    expect(await db.sessions.get('lesson')).toBeDefined();
+    expect(await db.xpLedger.count()).toBe(1);
+  });
+
+  it('does not take back unlocked achievements', async () => {
+    await record(session('first'));
+    expect((await db.achievements.toArray()).map((a) => a.achievementId)).toContain(
+      'first_session',
+    );
+    await engine.deleteSession('first');
+    expect((await db.achievements.toArray()).map((a) => a.achievementId)).toContain(
+      'first_session',
+    );
+  });
+});

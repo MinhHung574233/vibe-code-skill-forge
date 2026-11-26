@@ -26,10 +26,14 @@ async function humanMove(page: Page) {
   await expect(page.getByText(/Your turn/)).toBeVisible({ timeout: 20_000 });
   for (const name of OPENINGS) {
     const point = page.getByRole('button', { name: `${name}, empty` });
-    if (await point.count()) {
-      await point.click();
-      return;
-    }
+    if (!(await point.count())) continue;
+    await point.click();
+    // A rejected move (suicide, ko) leaves the point empty; then try the next point.
+    const placed = await expect(point)
+      .toHaveCount(0, { timeout: 2_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (placed) return;
   }
   throw new Error('no free opening point left');
 }

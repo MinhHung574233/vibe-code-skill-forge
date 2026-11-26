@@ -18,12 +18,22 @@ import {
   formatAverage,
   formatSolve,
   formatSolveTime,
+  type Penalty,
 } from '../domain/stats';
 import { CubeNet } from './cubeDrawing';
 import { TimerPad } from './TimerPad';
 import { useOpenSessionSolves, useRubikService, useSolves } from './useRubik';
 
 const MODULE_BACK = { to: '/practice', label: 'Practice' };
+const INSPECTION_KEY = 'sf-rubik-inspection';
+
+function readInspectionPref(): boolean {
+  try {
+    return localStorage.getItem(INSPECTION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export function RubikHome() {
   const service = useRubikService();
@@ -34,6 +44,7 @@ export function RubikHome() {
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [inspection, setInspection] = useState(readInspectionPref);
 
   const all = useMemo(() => solves ?? [], [solves]);
   const last = all.at(-1);
@@ -59,10 +70,20 @@ export function RubikHome() {
     [all],
   );
 
-  const onFinish = async (timeMs: number) => {
+  const toggleInspection = () => {
+    const next = !inspection;
+    setInspection(next);
+    try {
+      localStorage.setItem(INSPECTION_KEY, next ? '1' : '0');
+    } catch {
+      /* a preference only: the toggle still works for this visit */
+    }
+  };
+
+  const onFinish = async (timeMs: number, penalty: Penalty) => {
     setError(null);
     try {
-      await service.addSolve({ timeMs, scramble });
+      await service.addSolve({ timeMs, scramble, penalty });
       setScramble(generateScramble());
     } catch {
       setError('Could not save that solve. Your device may be out of storage.');
@@ -101,11 +122,23 @@ export function RubikHome() {
           <Button variant="ghost" size="sm" onClick={() => setShowCube((v) => !v)}>
             {showCube ? 'Hide cube' : 'Show cube'}
           </Button>
+          <Button
+            variant={inspection ? 'primary' : 'ghost'}
+            size="sm"
+            aria-pressed={inspection}
+            onClick={toggleInspection}
+          >
+            Inspection
+          </Button>
         </div>
       </Card>
 
       <div className="mt-4">
-        <TimerPad onFinish={(ms) => void onFinish(ms)} lastMs={last ? last.timeMs : null} />
+        <TimerPad
+          onFinish={(ms, penalty) => void onFinish(ms, penalty)}
+          lastMs={last ? last.timeMs : null}
+          inspection={inspection}
+        />
       </div>
 
       {error && (
