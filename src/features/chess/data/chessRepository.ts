@@ -2,7 +2,12 @@ import { z } from 'zod';
 import { toLocalDate } from '@/core/time/localDate';
 import type { GameRecordRow, PuzzleProgressRow, RatingRow } from '@/db/rows';
 import type { SkillForgeDB } from '@/db/schema';
-import { INITIAL_RATING, updateRating, type RatingState, type RatingUpdate } from '../domain/rating';
+import {
+  INITIAL_RATING,
+  updateRating,
+  type RatingState,
+  type RatingUpdate,
+} from '../domain/rating';
 import { puzzleStreakDays, tally, type GameTally } from '../domain/stats';
 
 export const PUZZLE_RATING_KEY = 'chess-puzzle';
@@ -38,9 +43,86 @@ async function applyRating(
   return update;
 }
 
-export async function loadPuzzleProgress(db: SkillForgeDB): Promise<Map<string, PuzzleProgressRow>> {
+/**
+ * Opening-drill progress shares the `puzzleProgress` store (no schema change) under ids that start
+ * with this prefix. Puzzle code never sees those rows.
+ */
+export const OPENING_ID_PREFIX = 'opening:';
+
+export async function loadPuzzleProgress(
+  db: SkillForgeDB,
+): Promise<Map<string, PuzzleProgressRow>> {
   const rows = await db.puzzleProgress.where('game').equals('chess').toArray();
-  return new Map(rows.map((r) => [r.puzzleId, r]));
+  return new Map(
+    rows.filter((r) => !r.puzzleId.startsWith(OPENING_ID_PREFIX)).map((r) => [r.puzzleId, r]),
+  );
+}
+
+/** What is known about one opening line: finished at least once, how often, and how cleanly. */
+export interface OpeningProgress {
+  openingId: string;
+  /** Times the whole line was played through. */
+  completions: number;
+  firstCompletedAt: number;
+  lastCompletedAt: number;
+  /** Slips and hints in the cleanest run so far (0 = no mistakes). */
+  bestMistakes: number;
+  /** Slips and hints in the most recent run. */
+  lastMistakes: number;
+}
+
+/** The stored shape: a `PuzzleProgressRow` plus two extra counters (backups keep unknown fields). */
+interface OpeningProgressRow extends PuzzleProgressRow {
+  bestMistakes?: number;
+  lastMistakes?: number;
+}
+
+function toOpeningProgress(row: OpeningProgressRow): OpeningProgress {
+  const last = Math.max(0, Math.floor(row.lastMistakes ?? 0));
+  return {
+    openingId: row.puzzleId.slice(OPENING_ID_PREFIX.length),
+    completions: row.attempts,
+    firstCompletedAt: row.solvedAt ?? row.lastAttemptAt,
+    lastCompletedAt: row.lastAttemptAt,
+    bestMistakes: Math.max(0, Math.floor(row.bestMistakes ?? last)),
+    lastMistakes: last,
+  };
+}
+
+/** Completed opening lines by opening id. */
+export async function loadOpeningProgress(db: SkillForgeDB): Promise<Map<string, OpeningProgress>> {
+  const rows = await db.puzzleProgress.where('game').equals('chess').toArray();
+  const progress = rows
+    .filter((r) => r.puzzleId.startsWith(OPENING_ID_PREFIX) && r.solved === 1)
+    .map((r) => toOpeningProgress(r));
+  return new Map(progress.map((p) => [p.openingId, p]));
+}
+
+/** Notes one finished run of an opening line (`mistakes` = slips, hints and revealed moves). */
+export async function recordOpeningRun(
+  db: SkillForgeDB,
+  openingId: string,
+  mistakes: number,
+  now: number,
+): Promise<OpeningProgress> {
+  const key = `${OPENING_ID_PREFIX}${openingId}`;
+  const clean = Math.max(0, Math.floor(mistakes));
+  return db.transaction('rw', db.puzzleProgress, async () => {
+    const before = await db.puzzleProgress.get(key);
+    const prev = before ? toOpeningProgress(before) : null;
+    const row: OpeningProgressRow = {
+      puzzleId: key,
+      game: 'chess',
+      solved: 1,
+      attempts: (before?.attempts ?? 0) + 1,
+      lastAttemptAt: now,
+      solvedAt: before?.solvedAt ?? now,
+      bestMistakes: prev ? Math.min(prev.bestMistakes, clean) : clean,
+      lastMistakes: clean,
+    };
+    await db.puzzleProgress.put(row);
+    return toOpeningProgress(row);
+  });
 }
 
 export interface PuzzleOutcome {
@@ -98,6 +180,15 @@ export async function recordPuzzleOutcome(
 
 /* ---- games ---- */
 
+/** One graded move of a coach game (see domain/coach.ts), kept so a resumed game keeps its review. */
+const MoveReviewSchema = z.object({
+  ply: z.number().int().nonnegative(),
+  san: z.string(),
+  bestSan: z.string(),
+  grade: z.enum(['best', 'good', 'inaccuracy', 'mistake', 'blunder']),
+  lossCp: z.number().nonnegative(),
+});
+
 const GameDraftSchema = z.object({
   id: z.string().min(1),
   startedAt: z.number().int().positive(),
@@ -106,6 +197,19 @@ const GameDraftSchema = z.object({
   /** UCI moves from the standard start position. */
   moves: z.array(z.string().regex(/^[a-h][1-8][a-h][1-8][qrbn]?$/)),
   undos: z.number().int().nonnegative().default(0),
+  /** Present only for coach games (learning mode: take-backs allowed, never rated). */
+  coach: z.object({ reviews: z.array(MoveReviewSchema).default([]) }).optional(),
+  /**
+   * Present once the game is over and until its result is safely recorded. A game that could not be
+   * saved keeps this, so resuming it offers "Try saving again" instead of losing the result.
+   */
+  finished: z
+    .object({
+      outcome: z.enum(['win', 'loss', 'draw']),
+      reason: z.string().min(1),
+      endedAt: z.number().int().positive(),
+    })
+    .optional(),
 });
 export type GameDraft = z.infer<typeof GameDraftSchema>;
 
@@ -115,7 +219,11 @@ export async function loadGameDraft(db: SkillForgeDB): Promise<GameDraft | null>
   return parsed.success ? parsed.data : null; // missing or corrupt: no game to resume
 }
 
-export async function saveGameDraft(db: SkillForgeDB, draft: GameDraft, now: number): Promise<void> {
+export async function saveGameDraft(
+  db: SkillForgeDB,
+  draft: GameDraft,
+  now: number,
+): Promise<void> {
   await db.drafts.put({ key: GAME_DRAFT_KEY, value: draft, updatedAt: now });
 }
 
@@ -138,25 +246,60 @@ export interface FinishedGame {
   endedAt: number;
   /** Rating of the engine level, used as the opponent. */
   opponentRating: number;
+  /** A coach game: take-backs and hints make it a lesson, so it never changes the rating. */
+  coached?: boolean;
 }
 
 export interface GameRecordResult {
-  /** Present when the game was long enough to be rated. */
+  /** Present when the game was long enough to be rated (and was not a coach game). */
   rating: RatingUpdate | null;
   rated: boolean;
+  /** Long enough to count as practice (XP); true for coach games too. */
+  rewarded: boolean;
+  coached: boolean;
 }
 
 const SCORE = { win: 1, draw: 0.5, loss: 0 } as const;
 
-/** Saves the game, updates the play rating (if rated) and drops the resume draft atomically. */
+/**
+ * Saves the game and updates the play rating in one transaction. Idempotent per game id: when the
+ * game is already stored (an earlier attempt got this far) nothing is rated twice and the stored
+ * outcome is returned. The resume draft is NOT removed here: the caller drops it once everything
+ * that belongs to the game (the training session) is recorded too.
+ */
 export async function recordFinishedGame(
   db: SkillForgeDB,
   game: FinishedGame,
 ): Promise<GameRecordResult> {
-  return db.transaction('rw', [db.gameRecords, db.ratings, db.drafts], async () => {
-    const rated = game.playerMoves >= MIN_RATED_PLAYER_MOVES;
+  return db.transaction('rw', [db.gameRecords, db.ratings], async () => {
+    const coached = game.coached === true;
+    const rewarded = game.playerMoves >= MIN_RATED_PLAYER_MOVES;
+    const rated = rewarded && !coached;
+
+    const existing = await db.gameRecords.get(game.id);
+    if (existing) {
+      const delta = existing.details?.['ratingDelta'];
+      const after = existing.details?.['ratingAfter'];
+      const current = toState(await db.ratings.get(PLAY_RATING_KEY));
+      const rating: RatingUpdate | null =
+        rated && typeof delta === 'number'
+          ? {
+              value: typeof after === 'number' ? after : current.value,
+              games: current.games,
+              delta,
+            }
+          : null;
+      return { rating, rated, rewarded, coached };
+    }
+
     const rating = rated
-      ? await applyRating(db, PLAY_RATING_KEY, game.opponentRating, SCORE[game.result], game.endedAt)
+      ? await applyRating(
+          db,
+          PLAY_RATING_KEY,
+          game.opponentRating,
+          SCORE[game.result],
+          game.endedAt,
+        )
       : null;
     const row: GameRecordRow = {
       id: game.id,
@@ -170,15 +313,15 @@ export async function recordFinishedGame(
         plies: game.moves.length,
         pgn: game.pgn,
         undos: game.undos,
-        ...(rating ? { ratingDelta: rating.delta } : {}),
+        ...(coached ? { coached: true } : {}),
+        ...(rating ? { ratingDelta: rating.delta, ratingAfter: rating.value } : {}),
       },
       startedAt: game.startedAt,
       endedAt: game.endedAt,
       localDate: toLocalDate(game.endedAt),
     };
     await db.gameRecords.put(row);
-    await db.drafts.delete(GAME_DRAFT_KEY);
-    return { rating, rated };
+    return { rating, rated, rewarded, coached };
   });
 }
 
@@ -208,7 +351,8 @@ export async function loadChessSummary(db: SkillForgeDB, now: number): Promise<C
       solved.flatMap((p) => (p.solvedAt === undefined ? [] : [p.solvedAt])),
       now,
     ),
-    games: tally(records.map((r) => r.result)),
+    // coach games had take-backs and hints: they stay in the history but not in the record
+    games: tally(records.filter((r) => r.details?.['coached'] !== true).map((r) => r.result)),
     draft,
     solvedIds: new Set(solved.map((p) => p.puzzleId)),
   };

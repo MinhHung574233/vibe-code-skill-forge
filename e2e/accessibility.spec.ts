@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp } from './helpers';
+import { launchApp, seedSkills } from './helpers';
 
 /**
  * Automated accessibility audit (Phase 4): every screen is scanned with axe-core for WCAG 2.1 A/AA
@@ -113,4 +113,13 @@ test('animations stop when the device asks for reduced motion', async ({ page })
         .length,
   );
   expect(running).toBe(0);
+});
+
+test('the Home skill grid has no WCAG A/AA violations in either theme', async ({ page }) => {
+  await launchApp(page);
+  await seedSkills(page, ['Rubik', 'Java and Spring Boot', 'Chess']);
+  for (const scheme of ['light', 'dark'] as const) {
+    const found = await audit(page, '/', scheme, 'en');
+    expect(found).toEqual([]);
+  }
 });

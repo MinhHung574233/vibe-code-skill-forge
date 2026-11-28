@@ -106,19 +106,24 @@ export function GoHome() {
       {draft && (
         <Card className="mb-4" aria-labelledby="resume-heading" role="region">
           <h2 id="resume-heading" className="type-title-2">
-            {t('Game in progress')}
+            {draft.finished ? t('Game not saved yet') : t('Game in progress')}
           </h2>
           <p className="mt-1 type-subhead text-muted">
             {draft.config.size}×{draft.config.size} · {levelLabel(draft.level)} ·{' '}
             {draft.humanColor === 'white' ? t('you are white') : t('you are black')} ·{' '}
             {t('{count} moves played', { count: draft.moves.length })}
           </p>
+          {draft.finished && (
+            <p className="mt-1 type-subhead text-muted">
+              {t('This game is over, but its result has not been saved yet.')}
+            </p>
+          )}
           <div className="mt-4 flex flex-col gap-2">
             <Link
               to={`${base}/play`}
               className="inline-flex min-h-[50px] items-center justify-center rounded-xl bg-accent px-5 type-headline text-on-accent active:scale-[0.98] active:opacity-80"
             >
-              {t('Resume game')}
+              {draft.finished ? t('Try saving again') : t('Resume game')}
             </Link>
             <Button variant="ghost" onClick={() => setConfirmDiscard(true)}>
               {t('Discard it')}

@@ -1,12 +1,19 @@
 import { Chess, type Square } from 'chess.js';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
+import { getDb } from '@/db/boot';
 import { t } from '@/i18n/core';
 import { ListRow, Section } from '@/components/Section';
+import {
+  loadOpeningProgress,
+  recordOpeningRun,
+  type OpeningProgress,
+} from '../data/chessRepository';
 import { OPENINGS, openingById, openingUci, type Opening } from '../domain/openings';
 import { checkedKingSquare, legalTargets, needsPromotion, replay } from '../domain/rules';
 import { ChessBoard, type BoardFeedback } from './ChessBoard';
@@ -18,7 +25,25 @@ import type { PromotionPiece } from '../domain/rules';
 const OPPONENT_DELAY_MS = 600;
 const FEEDBACK_MS = 700;
 
+/** "Completed · 3 runs · best: no mistakes", or nothing for a line that was never finished. */
+function progressText(progress: OpeningProgress | undefined): string | null {
+  if (!progress) return null;
+  const runs =
+    progress.completions === 1
+      ? t('Completed · {n} run', { n: progress.completions })
+      : t('Completed · {n} runs', { n: progress.completions });
+  const best =
+    progress.bestMistakes === 0
+      ? t('best: no mistakes')
+      : progress.bestMistakes === 1
+        ? t('best: {n} slip or hint', { n: progress.bestMistakes })
+        : t('best: {n} slips or hints', { n: progress.bestMistakes });
+  return `${runs} · ${best}`;
+}
+
 export function OpeningsList() {
+  const progress = useLiveQuery(() => loadOpeningProgress(getDb()), []);
+  const done = progress ? OPENINGS.filter((o) => progress.has(o.id)).length : 0;
   return (
     <Screen title={t('Openings')} back={{ to: CHESS_BASE, label: t('Chess') }}>
       <p className="type-subhead text-muted">
@@ -28,17 +53,22 @@ export function OpeningsList() {
       </p>
       <Section
         title={t('Lines')}
-        footer={t('Sound, commonly played lines, not a complete repertoire.')}
+        footer={`${t('{done} of {total} lines completed.', { done, total: OPENINGS.length })} ${t('Sound, commonly played lines, not a complete repertoire.')}`}
       >
         {OPENINGS.map((o) => (
           <ListRow
             key={o.id}
             title={t(o.name)}
-            subtitle={t('{eco} · you play {color} · {n} moves', {
-              eco: o.eco,
-              color: sideName(o.side),
-              n: o.moves.length,
-            })}
+            subtitle={[
+              t('{eco} · you play {color} · {n} moves', {
+                eco: o.eco,
+                color: sideName(o.side),
+                n: o.moves.length,
+              }),
+              progressText(progress?.get(o.id)),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             icon="book"
             iconColor="#64748b"
             to={`${CHESS_BASE}/openings/${o.id}`}
@@ -66,9 +96,28 @@ function OpeningDrill({ opening }: { opening: Opening }) {
   const [feedback, setFeedback] = useState<BoardFeedback | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
+  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'failed' | null>(null);
+  const recording = useRef(false);
 
   const chess = useMemo(() => replay(line.slice(0, step)) ?? new Chess(), [line, step]);
   const complete = step >= line.length;
+
+  /** Stores one finished run (once per run; a failed save can be retried). */
+  const record = useCallback(() => {
+    if (recording.current) return;
+    recording.current = true;
+    setSaveState('saving');
+    recordOpeningRun(getDb(), opening.id, mistakes, Date.now()).then(
+      () => setSaveState('saved'),
+      () => {
+        recording.current = false;
+        setSaveState('failed');
+      },
+    );
+  }, [opening.id, mistakes]);
+  useEffect(() => {
+    if (complete) record();
+  }, [complete, record]);
   const learnersTurn = !complete && chess.turn() === learner;
   const lastNote = step > 0 ? opening.moves[step - 1]?.note : undefined;
   const lastUci = step > 0 ? line[step - 1] : undefined;
@@ -128,6 +177,8 @@ function OpeningDrill({ opening }: { opening: Opening }) {
   };
 
   const restart = () => {
+    recording.current = false;
+    setSaveState(null);
     setStep(0);
     setMistakes(0);
     setHint([]);
@@ -202,6 +253,19 @@ function OpeningDrill({ opening }: { opening: Opening }) {
                       n: mistakes,
                     })}
             </p>
+            {saveState === 'saved' && (
+              <p className="mt-2 type-footnote text-muted">{t('Progress saved on this device.')}</p>
+            )}
+            {saveState === 'failed' && (
+              <div className="mt-2 space-y-2">
+                <p role="alert" className="type-subhead text-danger">
+                  {t('Your progress could not be saved.')}
+                </p>
+                <Button variant="secondary" fullWidth onClick={record}>
+                  {t('Try saving again')}
+                </Button>
+              </div>
+            )}
             <Button className="mt-3" fullWidth onClick={restart}>
               {t('Drill again')}
             </Button>

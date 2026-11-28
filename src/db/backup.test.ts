@@ -15,7 +15,7 @@ import {
   type BackupFile,
 } from './backup';
 import { EPHEMERAL_TABLES, MARKER_TABLES } from './marker';
-import { SkillForgeDB } from './schema';
+import { CURRENT_SCHEMA_VERSION, SkillForgeDB } from './schema';
 import { readSnapshot } from './snapshot';
 import { V1, newTestEnv, skill, v2, type TestEnv } from './testing';
 
@@ -104,6 +104,57 @@ describe('parseBackup', () => {
     const result = await parseBackup(serializeBackup(original), [V1]);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value).toEqual(original);
+  });
+
+  it('accepts real module rows whose localDate is a YYYY-MM-DD string (regression: a broken regex rejected them)', async () => {
+    const file = await signed(
+      {
+        rubikSolves: [
+          {
+            id: 'r1',
+            timeMs: 12_345,
+            penalty: 'none',
+            scramble: "R U R'",
+            createdAt: 1,
+            localDate: '2026-11-27',
+          },
+        ],
+        gameRecords: [
+          {
+            id: 'g1',
+            game: 'chess',
+            level: 'hard',
+            result: 'win',
+            startedAt: 1,
+            endedAt: 2,
+            localDate: '2026-11-27',
+          },
+        ],
+      },
+      CURRENT_SCHEMA_VERSION,
+    );
+    const result = await parseBackup(serializeBackup(file));
+    expect(result.ok).toBe(true);
+  });
+
+  it('still rejects a malformed localDate in module rows', async () => {
+    const file = await signed(
+      {
+        gameRecords: [
+          {
+            id: 'g1',
+            game: 'go',
+            level: 'easy',
+            result: 'loss',
+            startedAt: 1,
+            endedAt: 2,
+            localDate: 'yesterday',
+          },
+        ],
+      },
+      CURRENT_SCHEMA_VERSION,
+    );
+    expect((await parseBackup(serializeBackup(file))).ok).toBe(false);
   });
 
   it.each([

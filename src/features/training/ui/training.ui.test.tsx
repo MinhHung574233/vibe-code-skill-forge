@@ -1,11 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDb } from '@/db/boot';
 import { createSkill, recordSession, renderAt, setupAppDatabase } from '@/test/appHarness';
 import { loadSessionDraft, saveSessionDraft } from '../data/sessionDraft';
 
 setupAppDatabase('training-ui-test');
+afterEach(() => vi.useRealTimers());
 
 describe('Session timer', () => {
   it('starts for the chosen skill and persists the running timer', async () => {
@@ -122,6 +123,10 @@ describe('Progress', () => {
   });
 
   it('shows real totals, consistency, time by skill, history and unlocked achievements', async () => {
+    // Fixed midday: sessions "24 h ago" must land on yesterday whatever time the suite runs (just
+    // after midnight, 24 h and 25 h ago are two different days). Only Date is faked.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 5, 15, 12, 0, 0));
     const rubik = await createSkill('Rubik');
     const java = await createSkill('Java');
     await recordSession({ minutes: 30, skillId: rubik.id });

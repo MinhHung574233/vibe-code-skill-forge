@@ -26,7 +26,7 @@ export const chess: Record<string, string> = {
     'Thành tích với máy: thắng {wins}, hòa {draws}, thua {losses}.',
   '{n} tactics, picked near your rating': '{n} bài chiến thuật, chọn gần với điểm hạng của bạn',
   'Play the engine': 'Chơi với máy',
-  'Three levels, undo and resign': 'Ba mức, có hoàn tác và xin thua',
+  'Three levels, coach mode, undo and resign': 'Ba mức, có chế độ hướng dẫn, hoàn tác và xin thua',
   '{n} lines to drill': '{n} biến để luyện',
 
   // ---- play ------------------------------------------------------------------------------------
@@ -367,4 +367,96 @@ export const chess: Record<string, string> = {
     'Rời khỏi cột d; từ a5 hậu ghim mã c3 về phía vua.',
   'Bring the bishop out before closing the diagonal with ...e6.':
     'Đưa tượng ra trước khi đóng đường chéo bằng ...e6.',
+
+  // ---- coach mode ------------------------------------------------------------------------------
+  'Coach mode': 'Chế độ hướng dẫn',
+  'After each move the engine checks it, explains why it is good or bad, and shows a better move. You can take moves back. Coach games are for learning and do not change your play rating.':
+    'Sau mỗi nước đi, máy sẽ kiểm tra, giải thích vì sao nước đó tốt hay chưa tốt và chỉ cho bạn nước đi tốt hơn. Bạn có thể đi lại. Ván có hướng dẫn chỉ để học nên không làm thay đổi điểm hạng khi chơi.',
+  Coach: 'Hướng dẫn',
+  'Checking your move…': 'Đang kiểm tra nước đi của bạn…',
+  'Take the move back, or continue': 'Hãy đi lại nước vừa rồi, hoặc tiếp tục',
+  'The coach could not check this move. You can keep playing.':
+    'Không kiểm tra được nước đi này. Bạn cứ tiếp tục chơi.',
+  'The coach could not find a good move. Try again.': 'Chưa tìm được nước đi tốt. Bạn hãy thử lại.',
+  'Coach games are for learning, so they do not change your play rating.':
+    'Ván có hướng dẫn chỉ để học nên không làm thay đổi điểm hạng khi chơi.',
+  'Show me a good move': 'Cho tôi một nước đi tốt',
+  'Take back and try again': 'Đi lại nước này',
+  Continue: 'Tiếp tục',
+  'Game review': 'Nhìn lại ván cờ',
+  'Accuracy: {n}%': 'Độ chính xác: {n}%',
+  'Where you lost the most': 'Những nước bạn mất nhiều nhất',
+  'Move {n}: you played {played}. A better move was {best}.':
+    'Nước thứ {n}: bạn đã đi {played}. Nước tốt hơn là {best}.',
+  'Accuracy is SkillForge’s own figure: how close your moves were to the engine’s choice, from 0 to 100. It is not a rating.':
+    'Độ chính xác là chỉ số riêng của SkillForge: các nước đi của bạn gần với lựa chọn của máy đến mức nào, từ 0 đến 100. Đây không phải điểm hạng.',
+  pawn: 'tốt',
+  knight: 'mã',
+  bishop: 'tượng',
+  rook: 'xe',
+  queen: 'hậu',
+  king: 'vua',
+  'Best move': 'Nước đi hay nhất',
+  'Good move': 'Nước đi tốt',
+  Inaccuracy: 'Thiếu chính xác',
+  Mistake: 'Sai lầm',
+  Blunder: 'Sai lầm nặng',
+  'This allows mate in {n}. The engine would reply {reply}.':
+    'Nước này cho phép chiếu hết sau {n} nước. Máy sẽ đáp lại bằng {reply}.',
+  'Your {piece} on {square} can be captured by {reply}.':
+    'Quân {piece} của bạn ở {square} có thể bị ăn bằng {reply}.',
+  'You missed mate in {n}.': 'Bạn đã bỏ lỡ nước chiếu hết sau {n} nước.',
+  'You missed a chance to win a {piece}.': 'Bạn đã bỏ lỡ cơ hội ăn một quân {piece}.',
+  'This gives up about {pawns} pawns of advantage compared with {move}.':
+    'Nước này làm mất khoảng {pawns} tốt lợi thế so với {move}.',
+  '{move} gives mate in {n}.': '{move} chiếu hết sau {n} nước.',
+  '{move} gives check and wins a {piece}.': '{move} chiếu tướng và ăn một quân {piece}.',
+  '{move} wins a {piece}.': '{move} ăn được một quân {piece}.',
+  'In the engine’s main line, {move} comes out about {pawns} pawns ahead.':
+    'Theo biến chính của máy, {move} giúp bạn hơn khoảng {pawns} tốt.',
+  'The engine agrees with your move.': 'Máy đồng ý với nước đi của bạn.',
+  'A solid move. The engine slightly prefers {move}.':
+    'Một nước đi chắc chắn. Máy hơi thích {move} hơn.',
+  'A better move was {move}.': 'Nước đi tốt hơn là {move}.',
+  'Try {move}.': 'Hãy thử {move}.',
+  'It is the engine’s top choice in this position.':
+    'Đây là lựa chọn hàng đầu của máy ở thế cờ này.',
+
+  // ---- how to beat Hard ------------------------------------------------------------------------
+  'How to beat Hard': 'Cách thắng mức Khó',
+  'Hard searches up to 12 half-moves ahead and stops after 1.4 seconds. It sees short tactics well, so beat it with sound play and patience.':
+    'Mức Khó tìm trước tối đa 12 nửa nước đi (mỗi lượt của một bên là một nửa nước) và dừng sau 1,4 giây. Máy thấy các chiến thuật ngắn rất rõ, nên hãy thắng bằng lối chơi chắc chắn và sự kiên nhẫn.',
+  'Before every move, look for pieces that can be captured for free: yours and its.':
+    'Trước mỗi nước đi, hãy tìm những quân có thể bị ăn miễn phí: của bạn và của máy.',
+  'Play a sound opening. Hard has no opening book, so it can drift into poor positions.':
+    'Hãy chơi một khai cuộc chắc chắn. Mức Khó không có sách khai cuộc nên có thể rơi vào thế cờ kém.',
+  'When you are ahead in material, trade pieces. Fewer pieces mean fewer tricks.':
+    'Khi bạn hơn quân, hãy đổi quân. Càng ít quân thì càng ít cạm bẫy.',
+  'Try to reach endgames, especially ones with a passed pawn. Hard has no endgame tables and may play them loosely.':
+    'Hãy cố đưa ván cờ về tàn cuộc, nhất là khi có tốt thông. Mức Khó không có bảng tàn cuộc nên có thể chơi chưa chặt.',
+  'Closed positions with locked pawns reward long plans, which a fixed-depth search can miss.':
+    'Thế cờ đóng với các tốt chặn nhau thưởng cho kế hoạch dài hơi, thứ mà một máy tìm kiếm độ sâu cố định có thể bỏ sót.',
+  'Turn on Coach mode and practise on Medium first. Move to Hard when most of your moves are Best or Good.':
+    'Hãy bật chế độ hướng dẫn và luyện ở mức Trung bình trước. Khi phần lớn nước đi của bạn là hay nhất hoặc tốt thì hãy chuyển sang mức Khó.',
+
+  // ---- saving a finished game, opening progress ------------------------------------------------
+  'Game not saved yet': 'Ván chưa được lưu',
+  'This game is over, but its result has not been saved yet.':
+    'Ván này đã kết thúc nhưng kết quả chưa được lưu.',
+  'Try saving again': 'Thử lưu lại',
+  'Discard the unsaved game?': 'Bỏ ván chưa lưu?',
+  'Starting a new game discards the finished game that has not been saved. Its result and XP will be lost.':
+    'Bắt đầu ván mới sẽ bỏ ván đã kết thúc nhưng chưa lưu. Kết quả và XP của ván đó sẽ mất.',
+  'Your result is kept on this device. Try again now, or come back to it later.':
+    'Kết quả của bạn vẫn được giữ trên thiết bị này. Hãy thử lại ngay, hoặc quay lại sau.',
+  'Completed · {n} run': 'Đã hoàn thành · {n} lượt',
+  'Completed · {n} runs': 'Đã hoàn thành · {n} lượt',
+  'best: no mistakes': 'tốt nhất: không sai nước nào',
+  'best: {n} slip or hint': 'tốt nhất: {n} lần sai hoặc gợi ý',
+  'best: {n} slips or hints': 'tốt nhất: {n} lần sai hoặc gợi ý',
+  '{done} of {total} lines completed.': 'Đã hoàn thành {done}/{total} biến.',
+  'Progress saved on this device.': 'Đã lưu tiến độ trên thiết bị này.',
+  'Your progress could not be saved.': 'Không lưu được tiến độ của bạn.',
+  'Your puzzle progress could not be loaded. Go back and try again.':
+    'Không tải được tiến độ thế cờ của bạn. Hãy quay lại và thử lại.',
 };

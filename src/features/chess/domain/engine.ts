@@ -64,8 +64,9 @@ export class ChessEngine {
     limits: SearchLimits,
     history: readonly string[] = [],
     now?: () => number,
+    rootMoves?: readonly string[],
   ): SearchResult {
-    return this.searcher.search(fen, limits, history, now);
+    return this.searcher.search(fen, limits, history, now, rootMoves);
   }
 
   scoreRootMoves(fen: string, depth: number, history: readonly string[] = []) {

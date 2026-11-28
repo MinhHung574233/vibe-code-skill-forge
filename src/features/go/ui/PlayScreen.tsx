@@ -6,7 +6,6 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
-import { MAX_SESSION_SEC } from '@/core/training/config';
 import { systemClock } from '@/core/time/clock';
 import { getDb } from '@/db/boot';
 import { t } from '@/i18n/core';
@@ -14,12 +13,12 @@ import type { CompletionOutcome } from '@/features/training/domain/session';
 import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteSheet';
 import { useTrainingEngine } from '@/features/training/ui/useTraining';
 import { cn } from '@/utils/cn';
+import { finishGoGame } from '../data/finishGame';
 import { clearDraft, draftToSerialized, loadDraft, saveDraft, type GoDraft } from '../data/goDraft';
 import { BLACK, WHITE, opponent, type Color } from '../domain/board';
 import {
   gameResult,
   gameStatus,
-  movesBy,
   passTurn,
   playStone,
   restoreGame,
@@ -38,9 +37,6 @@ import { GoBoard, type PointMark } from './GoBoard';
 import { useGoContext, useGoRepository } from './hooks';
 import { colorName, pointName, resultNotation, starPoints } from './labels';
 import { ResultSheet } from './ResultSheet';
-
-/** A finished game must have this many human stones to count (the product rule: >= 5 moves). */
-export const MIN_RECORDED_MOVES = 5;
 
 function rejectionText(reason: MoveRejection): string {
   switch (reason) {
@@ -91,6 +87,14 @@ function describeLastMove(game: GameState, human: Color): string {
 
 type Stage = 'play' | 'result' | 'xp';
 
+/** A game that is over: how it ended is fixed once, so every save attempt records the same game. */
+interface Ending {
+  game: GameState;
+  result: GameResult;
+  endedAt: number;
+  dead: readonly number[];
+}
+
 export function PlayScreen() {
   const { base, createEngine } = useGoContext();
   const navigate = useNavigate();
@@ -108,7 +112,16 @@ export function PlayScreen() {
   const [stage, setStage] = useState<Stage>('play');
   const [result, setResult] = useState<{ game: GameResult; recorded: boolean } | null>(null);
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
-  const finished = useRef(false);
+  /** Set from the moment the game ends until its result is saved; kept when saving fails. */
+  const [ending, setEnding] = useState<Ending | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savingRef = useRef(false);
+  const resumedEnding = useRef(false);
+  /** The game is over (saved or not): the computer must not move. */
+  const over = useRef(false);
+  /** The game was resigned or discarded: its draft is gone and must not be written again. */
+  const closed = useRef(false);
 
   // The AI engine lives as long as the screen; the worker is released on unmount.
   const engine = useMemo(() => createEngine(), [createEngine]);
@@ -116,14 +129,30 @@ export function PlayScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadDraft(getDb()).then(async (loaded) => {
-      if (cancelled) return;
-      const restored = loaded ? restoreGame(draftToSerialized(loaded)) : null;
-      if (loaded && !restored) await clearDraft(getDb()); // corrupt record: start clean
-      if (cancelled) return;
-      setDraft(restored ? loaded : null);
-      setGame(restored);
-    });
+    void loadDraft(getDb())
+      .catch(() => null) // an unreadable saved game counts as none
+      .then(async (loaded) => {
+        if (cancelled) return;
+        const restored = loaded ? restoreGame(draftToSerialized(loaded)) : null;
+        if (loaded && !restored) await clearDraft(getDb()); // corrupt record: start clean
+        if (cancelled) return;
+        setDraft(restored ? loaded : null);
+        setGame(restored);
+        if (!loaded || !restored) return;
+        // A game that was over but never saved (a failed save, then a reload): try again at once.
+        const dead = new Set(loaded.finished?.dead ?? []);
+        if (loaded.finished || gameStatus(restored) === 'resigned') {
+          resumedEnding.current = true;
+          over.current = true;
+          setDead(dead);
+          setEnding({
+            game: restored,
+            result: gameResult(restored, dead),
+            endedAt: loaded.finished?.endedAt ?? systemClock.now(),
+            dead: [...dead],
+          });
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -136,7 +165,7 @@ export function PlayScreen() {
 
   // Resume after a reload or an iOS suspension: every move is saved as it is made.
   useEffect(() => {
-    if (!draft || !game || finished.current) return;
+    if (!draft || !game || ending !== null || closed.current) return;
     const serial = serializeGame(game);
     const next: GoDraft = {
       ...draft,
@@ -145,66 +174,70 @@ export function PlayScreen() {
         serial.resignedBy === null ? null : serial.resignedBy === BLACK ? 'black' : 'white',
     };
     void saveDraft(getDb(), next, systemClock.now());
-  }, [draft, game]);
+  }, [draft, game, ending]);
+
+  /**
+   * Records the finished game. Safe to run again after a failure: the id, end time and result are
+   * fixed in `p`, the game record is idempotent per id and the session per activity key.
+   */
+  const persist = useCallback(
+    async (p: Ending) => {
+      if (!draft || savingRef.current) return;
+      savingRef.current = true;
+      setSaving(true);
+      setSaveError(null);
+      try {
+        const done = await finishGoGame(
+          { db: getDb(), repository, engine: trainingEngine, now: () => systemClock.now() },
+          draft,
+          p.game,
+          p.result,
+          { endedAt: p.endedAt, dead: p.dead },
+        );
+        if (!done.ok) {
+          setSaveError(done.message);
+          return;
+        }
+        closed.current = true; // saved and the draft is gone: never write it again
+        setEnding(null);
+        setOutcome(done.session);
+        setResult({ game: p.result, recorded: done.recorded });
+        setStage('result');
+      } finally {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    },
+    [draft, repository, trainingEngine],
+  );
 
   const finishGame = useCallback(
-    async (state: GameState, final: GameResult) => {
-      if (!draft || finished.current) return;
-      finished.current = true;
-      const endedAt = systemClock.now();
-      const humanMoves = movesBy(state, human);
-      const outcomeFor: 'win' | 'loss' | 'draw' =
-        final.winner === 'draw' ? 'draw' : final.winner === human ? 'win' : 'loss';
-      const recorded = humanMoves >= MIN_RECORDED_MOVES;
-      let saved: CompletionOutcome | null = null;
-      if (recorded) {
-        // an abandoned game resumed days later must still fit the engine's session limits
-        const startedAt = Math.max(draft.startedAt, endedAt - MAX_SESSION_SEC * 1000);
-        const signed = final.score ? final.score.margin : 0;
-        await repository.saveGame({
-          id: draft.gameId,
-          level: draft.level,
-          size: draft.config.size,
-          komi: draft.config.komi,
-          handicap: draft.config.handicap,
-          color: draft.humanColor,
-          result: outcomeFor,
-          margin: human === BLACK ? signed : -signed,
-          by: final.by,
-          startedAt,
-          endedAt,
-          moves: serializeGame(state).moves,
-        });
-        const response = await trainingEngine.recordSession({
-          id: draft.gameId,
-          moduleId: 'go',
-          activityType: 'game_session',
-          startedAt,
-          endedAt: Math.max(endedAt, startedAt + 1000),
-          source: 'timer',
-          score: outcomeFor === 'win' ? 1 : outcomeFor === 'draw' ? 0.5 : 0,
-          result: {
-            kind: 'game',
-            game: 'go',
-            size: draft.config.size,
-            level: draft.level,
-            result: outcomeFor,
-            by: final.by,
-          },
-        });
-        if (response.ok) saved = response.value;
-      }
-      await clearDraft(getDb());
-      setOutcome(saved);
-      setResult({ game: final, recorded });
-      setStage('result');
+    (state: GameState, final: GameResult, dead: ReadonlySet<number> = new Set()) => {
+      if (savingRef.current || ending !== null) return;
+      over.current = true;
+      const next: Ending = {
+        game: state,
+        result: final,
+        endedAt: systemClock.now(),
+        dead: [...dead],
+      };
+      setEnding(next);
+      void persist(next);
     },
-    [draft, human, repository, trainingEngine],
+    [persist, ending],
   );
+
+  // a resumed game that was over but not saved: save it as soon as the screen is ready
+  useEffect(() => {
+    if (ending && draft && resumedEnding.current) {
+      resumedEnding.current = false;
+      void persist(ending);
+    }
+  }, [ending, draft, persist]);
 
   // The computer's turn.
   useEffect(() => {
-    if (!draft || !game || status !== 'playing' || game.toPlay !== ai || finished.current) return;
+    if (!draft || !game || status !== 'playing' || game.toPlay !== ai || over.current) return;
     let cancelled = false;
     setThinking(true);
     engine
@@ -215,7 +248,7 @@ export function PlayScreen() {
         if (move.kind === 'resign') {
           const next = resign(game, ai);
           setGame(next);
-          void finishGame(next, gameResult(next));
+          finishGame(next, gameResult(next));
           return;
         }
         const applied = move.kind === 'move' ? playStone(game, move.point) : passTurn(game);
@@ -269,6 +302,7 @@ export function PlayScreen() {
 
   const onPoint = (point: number) => {
     if (!game) return;
+    if (ending) return;
     if (status === 'scoring') {
       setDead(toggleDeadGroup(game.board, dead, point));
       return;
@@ -317,8 +351,12 @@ export function PlayScreen() {
   const prisoners = game.captures;
   const stoneNames = { you: colorName(human), computer: colorName(ai) };
 
-  const statusText =
-    status === 'scoring'
+  const saveFailed = ending !== null && !saving && saveError !== null;
+  const statusText = ending
+    ? saveFailed
+      ? t('The game is over, but its result is not saved yet.')
+      : t('Saving the result…')
+    : status === 'scoring'
       ? t('Both players passed. Tap groups to mark them dead, then accept the result.')
       : thinking
         ? t('The computer is thinking…')
@@ -332,7 +370,7 @@ export function PlayScreen() {
 
   const doResign = async () => {
     setConfirmResign(false);
-    finished.current = true; // resigning records nothing, so there is no draft to keep
+    closed.current = true; // resigning records nothing, so there is no draft to keep
     await clearDraft(getDb());
     goHome();
   };
@@ -341,7 +379,7 @@ export function PlayScreen() {
     setDead(suggestDeadStones(game.board, createRng(draft.seed + game.moves.length)));
   };
 
-  const accept = () => void finishGame(game, gameResult(game, dead));
+  const accept = () => finishGame(game, gameResult(game, dead), dead);
 
   return (
     <Screen title={t('Game')} back={{ to: base, label: t('Go') }}>
@@ -372,7 +410,15 @@ export function PlayScreen() {
           koPoint={status === 'playing' && game.ko >= 0 ? game.ko : null}
           pending={pending !== null ? { point: pending, color: human } : null}
           {...(marks ? { marks } : {})}
-          mode={status === 'scoring' ? 'mark' : humanTurn && !thinking ? 'play' : 'none'}
+          mode={
+            ending
+              ? 'none'
+              : status === 'scoring'
+                ? 'mark'
+                : humanTurn && !thinking
+                  ? 'play'
+                  : 'none'
+          }
           onPoint={onPoint}
           pointLabel={(p) => pointName(size, p)}
           zoom={zoomed ? 1.9 : 1}
@@ -385,7 +431,29 @@ export function PlayScreen() {
         </p>
       )}
 
-      {status === 'playing' && (
+      {ending && saveFailed && (
+        <Card className="mt-4" role="region" aria-labelledby="save-failed-heading">
+          <h2 id="save-failed-heading" className="type-title-2">
+            {t('Result not saved')}
+          </h2>
+          <p role="alert" className="mt-2 type-subhead text-danger">
+            {saveError}
+          </p>
+          <p className="mt-2 type-subhead text-muted">
+            {t('Your result is kept on this device. Try again now, or come back to it later.')}
+          </p>
+          <Button
+            className="mt-3"
+            fullWidth
+            variant="secondary"
+            onClick={() => void persist(ending)}
+          >
+            {t('Try saving again')}
+          </Button>
+        </Card>
+      )}
+
+      {status === 'playing' && !ending && (
         <div className="mt-4 space-y-2">
           {pending !== null && (
             <Button fullWidth onClick={() => place(pending)}>
@@ -431,7 +499,7 @@ export function PlayScreen() {
         </div>
       )}
 
-      {status === 'scoring' && owner && (
+      {status === 'scoring' && owner && !ending && (
         <Card className="mt-4" aria-labelledby="score-heading" role="region">
           <h2 id="score-heading" className="type-title-2">
             {t('Scoring')}

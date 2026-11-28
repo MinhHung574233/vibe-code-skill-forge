@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDb } from '@/db/boot';
+import { DexieTrainingEngine } from '@/features/training/data/trainingEngine';
 import { setupAppDatabase } from '@/test/appHarness';
 import { loadDraft, saveDraft, type GoDraft } from '../data/goDraft';
 import { chooseMove } from '../domain/ai';
@@ -12,6 +13,7 @@ import type { AiEngine } from './aiEngine';
 import { GoModule } from './GoModule';
 
 setupAppDatabase('go-ui-test');
+afterEach(() => vi.restoreAllMocks());
 
 /** A scripted opponent: a real (easy, seeded) engine move, but it always answers a pass with a pass. */
 const scriptedEngine = (): AiEngine => ({
@@ -207,6 +209,86 @@ describe('Playing a game', () => {
   });
 });
 
+describe('a game that cannot be saved', () => {
+  /** Black has five stones and both sides have passed: only "Accept result" is left. */
+  const SCORING = [40, 41, 31, 32, 49, 50, 22, 23, 58, null, null];
+
+  it('keeps the board, offers a retry, and records the result and XP once', async () => {
+    const spy = vi
+      .spyOn(DexieTrainingEngine.prototype, 'recordSession')
+      .mockResolvedValueOnce({ ok: false, error: new Error('IO') } as never);
+    await saveDraft(getDb(), draft({ moves: SCORING }), Date.now());
+    renderGo('/practice/go/play');
+    const scoring = await screen.findByRole('region', { name: 'Scoring' });
+    await userEvent.click(within(scoring).getByRole('button', { name: 'Accept result' }));
+
+    const failed = await screen.findByRole('region', { name: 'Result not saved' });
+    expect(within(failed).getByRole('alert')).toHaveTextContent(/could not be saved/);
+    expect(screen.getByRole('group', { name: '9 by 9 Go board' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Accept result' })).not.toBeInTheDocument();
+    expect(await getDb().xpLedger.count()).toBe(0);
+    expect((await loadDraft(getDb()))?.finished).toMatchObject({ dead: [] });
+
+    await userEvent.click(within(failed).getByRole('button', { name: 'Try saving again' }));
+    const result = await screen.findByRole('dialog', { name: /^(You won|You lost|Draw)$/ });
+    await userEvent.click(within(result).getByRole('button', { name: 'Continue' }));
+    const saved = await screen.findByRole('dialog', { name: 'Session saved' });
+    expect(within(saved).getByText('+15 XP')).toBeInTheDocument();
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(await getDb().gameRecords.count()).toBe(1);
+    expect(await getDb().sessions.count()).toBe(1);
+    expect(await getDb().xpLedger.count()).toBe(1);
+    expect(await loadDraft(getDb())).toBeNull();
+  });
+
+  it('is not lost on leaving: Go home and the game screen both offer the retry', async () => {
+    vi.spyOn(DexieTrainingEngine.prototype, 'recordSession').mockRejectedValueOnce(
+      new Error('quota'),
+    );
+    await saveDraft(getDb(), draft({ moves: SCORING }), Date.now());
+    renderGo('/practice/go/play');
+    await userEvent.click(
+      within(await screen.findByRole('region', { name: 'Scoring' })).getByRole('button', {
+        name: 'Accept result',
+      }),
+    );
+    await screen.findByRole('region', { name: 'Result not saved' });
+    cleanup(); // leave without retrying
+
+    renderGo('/practice/go');
+    expect(await screen.findByText('Game not saved yet')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Try saving again' })).toBeInTheDocument();
+    cleanup();
+
+    // coming back saves it straight away: the dead stones and end time were kept
+    renderGo('/practice/go/play');
+    const result = await screen.findByRole('dialog', { name: /^(You won|You lost|Draw)$/ });
+    await userEvent.click(within(result).getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('dialog', { name: 'Session saved' })).toBeInTheDocument();
+    expect(await getDb().gameRecords.count()).toBe(1);
+    expect(await getDb().xpLedger.count()).toBe(1);
+    expect(await loadDraft(getDb())).toBeNull();
+  });
+
+  it('a game the computer resigned, interrupted before saving, is saved on resume', async () => {
+    await saveDraft(
+      getDb(),
+      draft({
+        moves: [40, 41, 31, 32, 49, 50, 22, 23, 58],
+        resignedBy: 'white',
+        finished: { endedAt: Date.now() - 1000, dead: [] },
+      }),
+      Date.now(),
+    );
+    renderGo('/practice/go/play');
+    const result = await screen.findByRole('dialog', { name: 'You won' });
+    expect(within(result).getByText(/wins by resignation/)).toBeInTheDocument();
+    expect(await getDb().gameRecords.get('game-1')).toMatchObject({ result: 'win' });
+    expect(await loadDraft(getDb())).toBeNull();
+  });
+});
+
 describe('Tsumego', () => {
   it('lists problems by difficulty and ticks a problem once it is solved', async () => {
     renderGo('/practice/go/tsumego/straight-three-kill');
@@ -234,6 +316,25 @@ describe('Tsumego', () => {
       result: { kind: 'tsumego', puzzleId: 'straight-three-kill' },
       score: 1,
     });
+  });
+
+  it('a solve whose XP could not be saved offers a retry and pays once', async () => {
+    vi.spyOn(DexieTrainingEngine.prototype, 'recordSession').mockResolvedValueOnce({
+      ok: false,
+      error: new Error('IO'),
+    } as never);
+    renderGo('/practice/go/tsumego/straight-three-kill');
+    await userEvent.click(await screen.findByRole('button', { name: 'column 4, row 1, empty' }));
+    expect(await screen.findByText('Correct!')).toBeInTheDocument();
+    expect(await screen.findByText('Your progress could not be saved.')).toBeInTheDocument();
+    expect(await getDb().xpLedger.count()).toBe(0);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try saving again' }));
+    const saved = await screen.findByRole('dialog', { name: 'Session saved' });
+    expect(within(saved).getByText('+15 XP')).toBeInTheDocument();
+    expect(await getDb().xpLedger.count()).toBe(1);
+    expect(await getDb().sessions.count()).toBe(1);
+    expect(screen.queryByText('Your progress could not be saved.')).not.toBeInTheDocument();
   });
 
   it('solving again earns nothing more, and a revealed answer is not a solve', async () => {

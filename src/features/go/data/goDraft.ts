@@ -21,6 +21,16 @@ export const GoDraftSchema = z.object({
   resignedBy: z.enum(['black', 'white']).nullable(),
   /** Seed for the AI's choices, fixed per game so a resumed game is not a different opponent. */
   seed: z.number().int().min(0),
+  /**
+   * Present once the game is over and until its result is safely recorded (the end time and the
+   * stones marked dead), so a game that could not be saved comes back with a retry.
+   */
+  finished: z
+    .object({
+      endedAt: z.number().int().positive(),
+      dead: z.array(z.number().int().min(0).max(360)).max(361),
+    })
+    .optional(),
 });
 export type GoDraft = z.infer<typeof GoDraftSchema>;
 

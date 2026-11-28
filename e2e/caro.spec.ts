@@ -8,8 +8,11 @@ import { launchApp } from './helpers';
  * Needs the module mounted at `#/practice/caro` (route + registry entry added by the app).
  */
 
+/** Cells are named as the board prints them: column letter, row counted from the bottom (H8). */
+const cellName = (row: number, col: number, size = 15) =>
+  `${String.fromCharCode(64 + col)}${size - row + 1}`;
 const cell = (page: Page, row: number, col: number, state = 'empty') =>
-  page.getByRole('button', { name: new RegExp(`^Row ${row}, column ${col}, ${state}`) });
+  page.getByRole('button', { name: new RegExp(`^${cellName(row, col)}, ${state}`) });
 
 /**
  * Touch devices default to "confirm each move" (a 15x15 cell is ~23 px wide), so a tap only aims

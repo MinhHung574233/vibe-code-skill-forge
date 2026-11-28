@@ -18,6 +18,8 @@ interface FinishDeps {
   db: SkillForgeDB;
   engine: TrainingEngine;
   clock: Pick<Clock, 'now'>;
+  /** The moment the game ended. Pass the same value on every retry so the same game is recorded. */
+  endedAt?: number;
 }
 
 /**
@@ -36,7 +38,7 @@ export async function finishGame(
   const outcome = outcomeOf(game.status, draft.humanStone);
   if (!outcome) return { ok: false, message: t('The game is not finished.') };
 
-  const endedAt = deps.clock.now();
+  const endedAt = deps.endedAt ?? deps.clock.now();
   const startedAt = Math.min(
     Math.max(draft.startedAt, endedAt - LONGEST_SESSION_MS),
     endedAt - SHORTEST_SESSION_MS,
@@ -48,6 +50,8 @@ export async function finishGame(
       level: draft.level,
       outcome,
       size: draft.size,
+      rule: draft.rule,
+      obstacles: draft.obstacles.length,
       moves: game.moves.length,
       firstMover: draft.humanStone === 1 ? 'player' : 'computer',
       undos: draft.undos,
@@ -60,18 +64,22 @@ export async function finishGame(
 
   let session: CompletionOutcome | null = null;
   if (stoneCount(game, draft.humanStone) >= MIN_PLAYER_MOVES_FOR_SESSION) {
-    const recorded = await deps.engine.recordSession({
-      id: draft.id,
-      moduleId: 'caro',
-      activityType: 'game_session',
-      startedAt,
-      endedAt,
-      source: 'timer',
-      score: outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0,
-      result: { game: 'caro', level: draft.level, outcome },
-    });
-    if (!recorded.ok) return { ok: false, message: t(recorded.error.message) };
-    session = recorded.value;
+    try {
+      const recorded = await deps.engine.recordSession({
+        id: draft.id,
+        moduleId: 'caro',
+        activityType: 'game_session',
+        startedAt,
+        endedAt,
+        source: 'timer',
+        score: outcome === 'win' ? 1 : outcome === 'draw' ? 0.5 : 0,
+        result: { game: 'caro', level: draft.level, outcome },
+      });
+      if (!recorded.ok) return { ok: false, message: t(recorded.error.message) };
+      session = recorded.value;
+    } catch {
+      return { ok: false, message: t('Could not save the game result. Try again.') };
+    }
   }
 
   try {

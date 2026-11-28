@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
+import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
@@ -14,7 +15,14 @@ import { SessionCompleteSheet } from '@/features/training/ui/SessionCompleteShee
 import { useTrainingEngine } from '@/features/training/ui/useTraining';
 import { clearDraft, loadDraft, saveDraft } from '../data/caroRepository';
 import { finishGame, type FinishResult } from '../data/finishGame';
-import { isLegalMove, playMove, replay, stoneToMove, type GameState } from '../domain/game';
+import {
+  firstDeadFive,
+  isLegalMove,
+  playMove,
+  replay,
+  stoneToMove,
+  type GameState,
+} from '../domain/game';
 import {
   MIN_PLAYER_MOVES_FOR_SESSION,
   canUndo,
@@ -24,7 +32,7 @@ import {
   type Outcome,
 } from '../domain/play';
 import { CaroBoard } from './CaroBoard';
-import { CARO_HOME, levelLabel } from './labels';
+import { CARO_HOME, cellName, levelLabel, variantLabel } from './labels';
 import { useAiClient, useConfirmMoves } from './useCaroPrefs';
 
 /** `practice/caro/play`: loads the saved game; without one there is nothing to play. */
@@ -33,9 +41,11 @@ export function CaroPlay() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadDraft(getDb()).then((saved) => {
-      if (!cancelled) setDraft(saved);
-    });
+    void loadDraft(getDb())
+      .catch(() => null) // an unreadable saved game counts as none: back to the module home
+      .then((saved) => {
+        if (!cancelled) setDraft(saved);
+      });
     return () => {
       cancelled = true;
     };
@@ -72,7 +82,7 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
   const ai = useAiClient();
   const [confirmMoves, setConfirmMoves] = useConfirmMoves();
 
-  const [game, setGame] = useState<GameState>(() => replay(draft.size, draft.moves));
+  const [game, setGame] = useState<GameState>(() => replay(draft.size, draft.moves, draft));
   const [preview, setPreview] = useState<number | null>(null);
   const [resignOpen, setResignOpen] = useState(false);
   const [aiFailed, setAiFailed] = useState(false);
@@ -83,6 +93,8 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
   const [sheet, setSheet] = useState<CompletionOutcome | null>(null);
   const undos = useRef(draft.undos);
   const finishing = useRef(false);
+  /** Fixed when the game ends, so a retry records the same game rather than a later one. */
+  const endedAt = useRef<number | null>(null);
 
   const human = draft.humanStone;
   const outcome = outcomeOf(game.status, human);
@@ -109,7 +121,13 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
     if (!thinking) return;
     let cancelled = false;
     void ai
-      .chooseMove({ size: draft.size, moves: game.moves, level: draft.level })
+      .chooseMove({
+        size: draft.size,
+        moves: game.moves,
+        level: draft.level,
+        rule: draft.rule,
+        obstacles: draft.obstacles,
+      })
       .then((result) => {
         if (cancelled) return;
         if (isLegalMove(game, result.move)) {
@@ -125,13 +143,18 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
     return () => {
       cancelled = true;
     };
-  }, [thinking, game, draft.size, draft.level, ai, commit, aiAttempt]);
+  }, [thinking, game, draft.size, draft.level, draft.rule, draft.obstacles, ai, commit, aiAttempt]);
 
   // The game just ended on the board: record it once (a retry after an error bumps the attempt).
   useEffect(() => {
     if (outcome === null || finishing.current) return;
     finishing.current = true;
-    void finishGame({ db: getDb(), engine, clock: systemClock }, draft, game).then((result) => {
+    endedAt.current ??= systemClock.now();
+    void finishGame(
+      { db: getDb(), engine, clock: systemClock, endedAt: endedAt.current },
+      draft,
+      game,
+    ).then((result) => {
       setFinish(result);
       if (result.ok && result.session) setSheet(result.session);
     });
@@ -167,6 +190,10 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
     setFinishAttempt((n) => n + 1);
   };
 
+  // The first five that the 'blocked' rule rejected: the hint stays up for the rest of the game
+  // and is derived from the moves, so a resumed game shows it too.
+  const deadFive = useMemo(() => firstDeadFive(game), [game]);
+
   const youPlay = human === 1 ? t('You play filled stones') : t('You play hollow stones');
   const size = draft.size;
 
@@ -179,12 +206,23 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
           </span>
           <span>{youPlay}</span>
         </div>
+        <div>
+          <Badge>
+            {variantLabel({ size, rule: draft.rule, obstacles: draft.obstacles.length })}
+          </Badge>
+        </div>
 
         <p role="status" className="min-h-6 type-headline">
           {statusText({ outcome, thinking, aiFailed, aiming: confirmMoves && preview !== null })}
         </p>
+        {deadFive !== null && (
+          <p className="type-footnote text-muted">
+            {t('That five is blocked at both ends, so the game goes on.')}
+          </p>
+        )}
 
-        <div className="-mx-2">
+        {/* 19x19 on a 390 pt phone needs the full width to keep cells near 20 pt */}
+        <div className={size === 19 ? '-mx-4' : '-mx-2'}>
           <CaroBoard
             size={size}
             cells={game.cells}
@@ -299,11 +337,10 @@ function GameScreen({ draft }: { draft: CaroDraft }) {
               const stone = k % 2 === 0 ? 1 : 2;
               return (
                 <li key={k}>
-                  {t('{n}. {who}: row {row}, column {col}', {
+                  {t('{n}. {who}: {cell}', {
                     n: k + 1,
                     who: stone === human ? t('You') : t('Computer'),
-                    row: Math.floor(cell / size) + 1,
-                    col: (cell % size) + 1,
+                    cell: cellName(size, cell),
                   })}
                 </li>
               );

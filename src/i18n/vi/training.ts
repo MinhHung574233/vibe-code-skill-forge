@@ -1,5 +1,10 @@
 /** Vietnamese strings: training. Key = the exact English source string. */
 export const training: Record<string, string> = {
+  'Start timer': 'Bắt đầu bấm giờ',
+  'Open module': 'Mở module',
+  Details: 'Chi tiết',
+  'Add or edit skills': 'Thêm hoặc sửa kỹ năng',
+  'Tap a skill to start a timer for it.': 'Chạm vào một kỹ năng để bắt đầu bấm giờ cho kỹ năng đó.',
   // --- Time formatting (core/training/analytics) ---
   '{n} min': '{n} phút',
   '{h} h': '{h} giờ',

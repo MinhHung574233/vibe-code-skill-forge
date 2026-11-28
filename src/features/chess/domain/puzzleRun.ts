@@ -65,7 +65,11 @@ export function tryMove(run: PuzzleRun, uci: string): MoveOutcome {
     status: done ? 'solved' : 'playing',
     hintSquares: [],
   };
-  return { kind: 'correct', run: after, reply: done ? null : (run.puzzle.solution[nextPly] ?? null) };
+  return {
+    kind: 'correct',
+    run: after,
+    reply: done ? null : (run.puzzle.solution[nextPly] ?? null),
+  };
 }
 
 /** Plays the scripted opponent move that follows a correct solver move. */

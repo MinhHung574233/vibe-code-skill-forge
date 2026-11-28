@@ -489,4 +489,388 @@ export const java: Record<string, string> = {
     'Đo bằng log GC hoặc một profiler để tìm ra nút thắt cổ chai thật sự',
   'Tuning without measurements often makes things worse or hides the real problem.':
     'Tinh chỉnh mà không đo đạc thường khiến mọi thứ tệ hơn hoặc che giấu vấn đề thật.',
+  'Data and transactions': 'Dữ liệu và transaction',
+  'Map entities with JPA, query them with Spring Data, keep data consistent with transactions and evolve the schema safely.':
+    'Ánh xạ entity bằng JPA, truy vấn bằng Spring Data, giữ dữ liệu nhất quán với transaction và thay đổi schema một cách an toàn.',
+  'JPA entities and relationships': 'JPA entity và các quan hệ',
+  'Map classes to tables, own the foreign key correctly and spot the N+1 trap.':
+    'Ánh xạ class sang bảng, đặt khóa ngoại đúng phía và nhận ra bẫy N+1.',
+  'An entity is a class that JPA maps to a database table. Hibernate is the JPA implementation that Spring Boot uses by default. In Spring Boot 3 the annotations live in the jakarta.persistence package, not javax.persistence.':
+    'Entity là một class mà JPA ánh xạ sang một bảng trong cơ sở dữ liệu. Hibernate là bản triển khai JPA mà Spring Boot dùng mặc định. Trong Spring Boot 3, các annotation nằm trong package jakarta.persistence, không còn là javax.persistence.',
+  'A bidirectional relationship. Imports from jakarta.persistence are omitted.':
+    'Một quan hệ hai chiều (bidirectional). Các import từ jakarta.persistence được lược bớt.',
+  'The @ManyToOne side owns the foreign key. The mappedBy on the @OneToMany side says that the relationship is already mapped from the other side. When you change the relationship in Java, update both sides so they agree.':
+    'Phía @ManyToOne là phía sở hữu khóa ngoại. Thuộc tính mappedBy ở phía @OneToMany cho biết quan hệ đã được ánh xạ từ phía bên kia. Khi bạn thay đổi quan hệ trong Java, hãy cập nhật cả hai phía để chúng khớp nhau.',
+  '@OneToMany and @ManyToMany are lazy by default. @ManyToOne and @OneToOne are eager by default, so set fetch = FetchType.LAZY on them yourself.':
+    '@OneToMany và @ManyToMany mặc định là lazy. @ManyToOne và @OneToOne mặc định là eager, vì vậy hãy tự đặt fetch = FetchType.LAZY cho chúng.',
+  'A lazy association is loaded on first access. Looping over a list of entities and touching a lazy association in each one causes the N+1 problem.':
+    'Một association lazy được nạp ở lần truy cập đầu tiên. Lặp qua một danh sách entity và chạm vào association lazy của từng entity sẽ gây ra vấn đề N+1.',
+  'Reading a lazy association when no Hibernate session is open throws LazyInitializationException.':
+    'Đọc một association lazy khi không có Hibernate session nào đang mở sẽ ném LazyInitializationException.',
+  'Entities need a mutable class with a no-argument constructor, so a record is not a good entity. Records are fine as DTOs and projections.':
+    'Entity cần một class có thể thay đổi (mutable) và có constructor không tham số, nên record không phải là lựa chọn tốt cho entity. Record thích hợp để làm DTO và projection.',
+  'Spring Boot enables open-in-view by default, which keeps a session open for the whole web request and hides lazy-loading mistakes. Many teams set spring.jpa.open-in-view=false and load what they need inside the service.':
+    'Spring Boot bật open-in-view theo mặc định: session được giữ mở trong suốt một web request và che giấu các lỗi lazy loading. Nhiều đội đặt spring.jpa.open-in-view=false và nạp những gì cần dùng ngay trong service.',
+  'In a bidirectional @OneToMany and @ManyToOne relationship, which side owns the foreign key?':
+    'Trong một quan hệ hai chiều @OneToMany và @ManyToOne, phía nào sở hữu khóa ngoại?',
+  'The @ManyToOne side, the one without mappedBy': 'Phía @ManyToOne, tức phía không có mappedBy',
+  'The @OneToMany side, the one with mappedBy': 'Phía @OneToMany, tức phía có mappedBy',
+  'Both sides equally': 'Cả hai phía như nhau',
+  'The class that was written first': 'Class nào được viết trước',
+  'The many side has the foreign key column in its table. mappedBy marks the other side as the mirror of that mapping.':
+    'Phía “nhiều” có cột khóa ngoại nằm trong bảng của nó. mappedBy đánh dấu phía còn lại là bản phản chiếu của ánh xạ đó.',
+  'A page loads 50 orders and runs 51 queries because the lazy items of each order are read in a loop. What is a good first fix?':
+    'Một trang nạp 50 order và chạy 51 query vì các item lazy của mỗi order được đọc trong một vòng lặp. Cách sửa đầu tiên nào là hợp lý?',
+  'Add a database index on the order id': 'Thêm một index vào cột id của order',
+  'Fetch the items in the same query with join fetch or an @EntityGraph':
+    'Nạp các item trong cùng một query bằng join fetch hoặc @EntityGraph',
+  'Call getItems().size() on every order before returning':
+    'Gọi getItems().size() cho từng order trước khi trả về',
+  'Make the relationship eager everywhere': 'Đặt quan hệ thành eager ở mọi nơi',
+  'Loading the orders and their items in one query removes the extra per-row queries. Eager mapping alone can still run one query per row, and touching each collection is exactly what causes the problem.':
+    'Nạp order cùng item của chúng trong một query sẽ loại bỏ các query phát sinh theo từng dòng. Chỉ đặt eager thì vẫn có thể chạy một query cho mỗi dòng, còn việc chạm vào từng collection chính là nguyên nhân gây ra vấn đề.',
+  'With no open Hibernate session, what happens when you read a lazy collection that was never loaded?':
+    'Khi không có Hibernate session nào đang mở, điều gì xảy ra nếu bạn đọc một collection lazy chưa từng được nạp?',
+  'It returns an empty list': 'Nó trả về một list rỗng',
+  'It quietly opens a new connection and loads the data':
+    'Nó lặng lẽ mở một kết nối mới và nạp dữ liệu',
+  'The code does not compile': 'Code không biên dịch được',
+  'Hibernate throws LazyInitializationException': 'Hibernate ném LazyInitializationException',
+  'A lazy collection can only load while its session is open. Outside the session Hibernate cannot reach the database for it, so it fails with this exception.':
+    'Một collection lazy chỉ có thể nạp khi session của nó còn mở. Ngoài session, Hibernate không thể truy cập cơ sở dữ liệu cho nó, nên thao tác lỗi với exception này.',
+  'Spring Data repositories and queries': 'Spring Data repository và truy vấn',
+  'Derived queries, @Query, paging and projections without writing boilerplate.':
+    'Derived query, @Query, phân trang và projection mà không phải viết code lặp.',
+  'JpaRepository<T, ID> gives you save, findById, findAll, deleteById, count and paging with no code. findById returns an Optional. Beyond that, Spring Data builds queries from method names.':
+    'JpaRepository<T, ID> cho bạn sẵn save, findById, findAll, deleteById, count và phân trang mà không cần viết code. findById trả về một Optional. Ngoài ra, Spring Data tự dựng query từ tên method.',
+  'When a method name would become too long or the query is complex, write it with @Query. Use named parameters. Never build the query by joining strings with user input, because that opens the door to injection.':
+    'Khi tên method trở nên quá dài hoặc query phức tạp, hãy viết query bằng @Query. Dùng tham số có tên (named parameter). Đừng bao giờ ghép chuỗi với dữ liệu người dùng để tạo query, vì như vậy bạn mở cửa cho injection.',
+  'Paging: PageRequest.of(0, 20, Sort.by("createdAt").descending()). A Page also knows the total count, which costs an extra count query. A Slice skips it.':
+    'Phân trang: PageRequest.of(0, 20, Sort.by("createdAt").descending()). Một Page còn biết tổng số phần tử, việc này tốn thêm một query count. Slice thì bỏ qua bước đó.',
+  'Projections: return a record or an interface with only the fields you need, so the query selects fewer columns.':
+    'Projection: trả về một record hoặc một interface chỉ chứa các trường bạn cần, để query chọn ít cột hơn.',
+  'Inside a transaction, changes to a loaded entity are saved at commit by dirty checking. You do not need to call save again.':
+    'Bên trong một transaction, các thay đổi trên entity đã nạp sẽ được lưu khi commit nhờ dirty checking. Bạn không cần gọi save lần nữa.',
+  'Derived queries are checked when the application starts, so a typo in a property name fails early.':
+    'Derived query được kiểm tra khi ứng dụng khởi động, nên lỗi gõ sai tên thuộc tính sẽ báo lỗi sớm.',
+  'Use findById(id).orElseThrow(...) with a clear exception, so a missing row becomes a 404 instead of a NullPointerException later.':
+    'Hãy dùng findById(id).orElseThrow(...) với một exception rõ ràng, để một dòng không tồn tại trở thành lỗi 404 thay vì một NullPointerException về sau.',
+  'What does Spring Data derive from the method name existsByReference(String reference)?':
+    'Spring Data suy ra điều gì từ tên method existsByReference(String reference)?',
+  'A query that checks whether a row with that reference exists and returns a boolean':
+    'Một query kiểm tra xem có dòng nào với reference đó hay không và trả về boolean',
+  'A query that deletes the row with that reference': 'Một query xóa dòng có reference đó',
+  'A query that loads every row and filters in Java': 'Một query nạp mọi dòng rồi lọc trong Java',
+  'Nothing: exists is not a supported keyword':
+    'Không gì cả: exists không phải là từ khóa được hỗ trợ',
+  'Prefixes such as findBy, existsBy, countBy and deleteBy are parsed, and the rest of the name becomes the condition.':
+    'Các tiền tố như findBy, existsBy, countBy và deleteBy được phân tích, và phần còn lại của tên trở thành điều kiện.',
+  'Why use named parameters in @Query instead of building the string with +?':
+    'Vì sao nên dùng named parameter trong @Query thay vì dựng chuỗi bằng dấu +?',
+  'String concatenation does not compile in annotations':
+    'Ghép chuỗi không biên dịch được trong annotation',
+  'Named parameters make the query run on another thread':
+    'Named parameter khiến query chạy trên một thread khác',
+  'The values are bound safely, which prevents injection':
+    'Giá trị được gán (bind) an toàn, nhờ đó ngăn được injection',
+  'JPQL cannot contain any literal values': 'JPQL không thể chứa bất kỳ giá trị literal nào',
+  'Bound parameters are sent as data, never as part of the query text, so a malicious value cannot change the query.':
+    'Tham số được gán là dữ liệu, không bao giờ là một phần của câu query, nên một giá trị độc hại không thể làm thay đổi query.',
+  'A repository method returns Page<Order>. What does a Page carry that a plain List does not?':
+    'Một method của repository trả về Page<Order>. Một Page mang thêm điều gì mà một List thường không có?',
+  'The lazy collections of every order, already loaded':
+    'Các collection lazy của mọi order, đã được nạp sẵn',
+  'A cache of the next page of results': 'Một cache chứa trang kết quả kế tiếp',
+  'A guarantee that the data will not change': 'Một đảm bảo rằng dữ liệu sẽ không thay đổi',
+  'The total number of elements and pages, which needs an extra count query':
+    'Tổng số phần tử và số trang, việc này cần thêm một query count',
+  'A Page knows how many elements exist in total, so a UI can show page numbers. Counting costs one more query; a Slice avoids it.':
+    'Một Page biết tổng cộng có bao nhiêu phần tử, nên giao diện có thể hiển thị số trang. Việc đếm tốn thêm một query; Slice tránh được điều này.',
+  'Transactions: propagation, rollback and traps':
+    'Transaction: propagation, rollback và các cái bẫy',
+  'How @Transactional really works, and why it sometimes seems to do nothing.':
+    '@Transactional thực sự hoạt động thế nào, và vì sao đôi khi nó có vẻ không làm gì cả.',
+  '@Transactional works through a proxy. Spring wraps the bean in a proxy object that starts the transaction before the method and commits or rolls back after it. Only calls that go through the proxy are intercepted.':
+    '@Transactional hoạt động thông qua một proxy. Spring bọc bean trong một đối tượng proxy: proxy bắt đầu transaction trước method rồi commit hoặc rollback sau method. Chỉ những lời gọi đi qua proxy mới bị chặn lại.',
+  'The call to this.create skips the proxy, so the annotation is ignored. Move the method to another bean, or put @Transactional on createAll.':
+    'Lời gọi this.create bỏ qua proxy nên annotation bị phớt lờ. Hãy chuyển method sang một bean khác, hoặc đặt @Transactional lên createAll.',
+  'REQUIRED (default): join the current transaction, or start one if there is none.':
+    'REQUIRED (mặc định): tham gia transaction hiện tại, hoặc bắt đầu một transaction mới nếu chưa có.',
+  'REQUIRES_NEW: suspend the current transaction and run in a new, independent one that commits or rolls back on its own.':
+    'REQUIRES_NEW: tạm dừng transaction hiện tại và chạy trong một transaction mới, độc lập, tự commit hoặc rollback riêng.',
+  'MANDATORY: a transaction must already exist, otherwise an exception is thrown.':
+    'MANDATORY: phải có sẵn một transaction, nếu không sẽ ném exception.',
+  'Rollback happens for RuntimeException and Error. A checked exception commits unless you set rollbackFor.':
+    'Rollback xảy ra với RuntimeException và Error. Một checked exception sẽ vẫn commit trừ khi bạn đặt rollbackFor.',
+  'If an inner method that joined your transaction throws, the transaction is marked rollback-only. Catching the exception in the outer method does not save it, and the commit fails with UnexpectedRollbackException.':
+    'Nếu một method bên trong đã tham gia transaction của bạn ném exception, transaction bị đánh dấu chỉ-rollback (rollback-only). Bắt exception ở method bên ngoài cũng không cứu được, và lúc commit sẽ lỗi với UnexpectedRollbackException.',
+  'readOnly = true is a hint that lets Spring and Hibernate skip work such as dirty checking for queries.':
+    'readOnly = true là một gợi ý giúp Spring và Hibernate bỏ qua một số việc, chẳng hạn dirty checking, khi chỉ đọc dữ liệu.',
+  'Roll back for checked exceptions too.': 'Rollback cả với checked exception.',
+  'Keep transactions short. Do not call a slow remote service inside one: it holds a database connection the whole time.':
+    'Hãy giữ transaction ngắn. Đừng gọi một dịch vụ từ xa chậm bên trong transaction: nó giữ một kết nối cơ sở dữ liệu suốt thời gian đó.',
+  'A method calls another @Transactional method of the same class with this.method(). What happens to the annotation on the called method?':
+    'Một method gọi một method @Transactional khác của cùng class bằng this.method(). Điều gì xảy ra với annotation trên method được gọi?',
+  'It starts a new transaction with REQUIRES_NEW':
+    'Nó bắt đầu một transaction mới với REQUIRES_NEW',
+  'It is ignored, because the call does not pass through the Spring proxy':
+    'Nó bị phớt lờ, vì lời gọi không đi qua proxy của Spring',
+  'Spring throws an exception at startup': 'Spring ném exception lúc khởi động',
+  'It is applied twice, once for each call': 'Nó được áp dụng hai lần, mỗi lời gọi một lần',
+  'The proxy sits outside the object. A call from inside the object goes straight to the method, so no transaction logic runs.':
+    'Proxy nằm bên ngoài đối tượng. Một lời gọi từ bên trong đối tượng đi thẳng vào method, nên không có logic transaction nào chạy.',
+  'An audit record must be saved even when the main operation rolls back. Which propagation fits the audit method, when it lives in another bean?':
+    'Một bản ghi audit phải được lưu ngay cả khi thao tác chính bị rollback. Propagation nào phù hợp cho method ghi audit, khi nó nằm trong một bean khác?',
+  REQUIRED: 'REQUIRED',
+  MANDATORY: 'MANDATORY',
+  REQUIRES_NEW: 'REQUIRES_NEW',
+  SUPPORTS: 'SUPPORTS',
+  'REQUIRES_NEW suspends the outer transaction and commits the audit on its own. With REQUIRED the audit would roll back together with the main operation.':
+    'REQUIRES_NEW tạm dừng transaction bên ngoài và commit bản audit riêng. Với REQUIRED, bản audit sẽ bị rollback cùng với thao tác chính.',
+  'How do you make a checked exception cause a rollback?':
+    'Làm thế nào để một checked exception gây ra rollback?',
+  'Declare the method private': 'Khai báo method là private',
+  'Set readOnly = true': 'Đặt readOnly = true',
+  'Catch the exception and return null': 'Bắt exception rồi trả về null',
+  'Set rollbackFor = Exception.class (or the specific type) on @Transactional':
+    'Đặt rollbackFor = Exception.class (hoặc kiểu cụ thể) trên @Transactional',
+  'By default only unchecked exceptions and errors roll back. rollbackFor adds the exception types you list.':
+    'Theo mặc định chỉ unchecked exception và error mới gây rollback. rollbackFor thêm vào các kiểu exception mà bạn liệt kê.',
+  'Migrations and connection pooling': 'Migration và connection pool',
+  'Change the schema with versioned scripts, and size the connection pool sensibly.':
+    'Thay đổi schema bằng các script có đánh số phiên bản, và chọn kích thước connection pool hợp lý.',
+  'In production the schema should change only through reviewed, versioned migrations. Set spring.jpa.hibernate.ddl-auto to validate or none, and keep update and create for experiments on your own machine. Flyway and Liquibase are the two common tools. Spring Boot runs them at startup when the dependency is on the classpath.':
+    'Trên production, schema chỉ nên thay đổi thông qua các migration có đánh số phiên bản và đã được review. Hãy đặt spring.jpa.hibernate.ddl-auto là validate hoặc none, còn update và create chỉ dành cho thử nghiệm trên máy của bạn. Flyway và Liquibase là hai công cụ phổ biến. Spring Boot chạy chúng khi khởi động nếu dependency có trong classpath.',
+  'Flyway reads files named V<version>__<description>.sql in order.':
+    'Flyway đọc các file tên V<version>__<description>.sql theo thứ tự.',
+  'Flyway stores a checksum of each applied migration. Never edit one that has run; add a new version instead.':
+    'Flyway lưu checksum của mỗi migration đã áp dụng. Đừng bao giờ sửa một migration đã chạy; hãy thêm một phiên bản mới.',
+  'Liquibase works the same way, with changelogs and changesets written in YAML, XML or SQL.':
+    'Liquibase hoạt động tương tự, với changelog và changeset viết bằng YAML, XML hoặc SQL.',
+  'Make changes backward compatible, such as adding a column before using it, so old and new versions of the app can run side by side during a rolling deploy.':
+    'Hãy làm các thay đổi tương thích ngược, chẳng hạn thêm một cột trước khi dùng nó, để phiên bản cũ và mới của ứng dụng có thể chạy song song trong lúc rolling deploy.',
+  'Run the migrations against a real database in your tests.':
+    'Hãy chạy các migration trên một cơ sở dữ liệu thật trong test của bạn.',
+  'Opening a database connection is expensive, so applications keep a pool of ready connections. Spring Boot uses HikariCP by default. The pool is small on purpose: the database can only do so much work at once.':
+    'Mở một kết nối cơ sở dữ liệu rất tốn kém, nên ứng dụng giữ sẵn một pool các kết nối. Spring Boot dùng HikariCP theo mặc định. Pool được giữ nhỏ có chủ ý: cơ sở dữ liệu chỉ làm được một lượng việc nhất định cùng lúc.',
+  'At most 10 connections, and wait at most 5000 ms for a free one. The default size is also 10.':
+    'Tối đa 10 kết nối, và chờ tối đa 5000 ms để có một kết nối rảnh. Kích thước mặc định cũng là 10.',
+  'A bigger pool is not faster. Pool size times the number of app instances must stay below the database’s connection limit.':
+    'Pool lớn hơn không có nghĩa là nhanh hơn. Kích thước pool nhân với số instance của ứng dụng phải nằm dưới giới hạn kết nối của cơ sở dữ liệu.',
+  'The error “Connection is not available, request timed out” usually means connections are held too long, not that the pool is too small.':
+    'Lỗi “Connection is not available, request timed out” thường có nghĩa là các kết nối bị giữ quá lâu, chứ không phải pool quá nhỏ.',
+  'Before raising the pool size, look for slow queries, long transactions and remote calls made inside a transaction.':
+    'Trước khi tăng kích thước pool, hãy tìm các query chậm, transaction kéo dài và các lời gọi từ xa nằm bên trong transaction.',
+  'Why is spring.jpa.hibernate.ddl-auto=update a poor way to change a production schema?':
+    'Vì sao spring.jpa.hibernate.ddl-auto=update là cách kém để thay đổi schema trên production?',
+  'Changes are not versioned or reviewed, and they can be unsafe or incomplete':
+    'Các thay đổi không có phiên bản và không được review, và có thể không an toàn hoặc không đầy đủ',
+  'The update setting was removed in Hibernate 6':
+    'Tùy chọn update đã bị loại bỏ trong Hibernate 6',
+  'It makes every query slower': 'Nó làm mọi query chậm đi',
+  'It only works with the H2 database': 'Nó chỉ hoạt động với cơ sở dữ liệu H2',
+  'Versioned migrations give you a reviewed, repeatable history of every change. Automatic schema updates give you neither.':
+    'Migration có phiên bản cho bạn một lịch sử thay đổi đã được review và lặp lại được. Tự động cập nhật schema thì không cho bạn cả hai.',
+  'You already applied V3__add_index.sql in production and then find a mistake in it. What should you do?':
+    'Bạn đã áp dụng V3__add_index.sql trên production rồi phát hiện một lỗi trong đó. Bạn nên làm gì?',
+  'Add a new migration, V4, that fixes it': 'Thêm một migration mới, V4, để sửa nó',
+  'Edit the V3 file and redeploy': 'Sửa file V3 rồi deploy lại',
+  'Rename the file to V2': 'Đổi tên file thành V2',
+  'Delete the V3 file from the project': 'Xóa file V3 khỏi dự án',
+  'Flyway compares a checksum with the one stored when V3 ran. A changed or missing file makes validation fail, so corrections go in a new version.':
+    'Flyway so sánh checksum với giá trị đã lưu khi V3 chạy. Một file bị đổi hoặc bị mất sẽ làm bước validate thất bại, nên việc sửa lỗi phải nằm trong một phiên bản mới.',
+  'Requests fail with “Connection is not available, request timed out”. What is the best first step?':
+    'Các request lỗi với “Connection is not available, request timed out”. Bước đầu tiên tốt nhất là gì?',
+  'Raise the pool size to 1000': 'Tăng kích thước pool lên 1000',
+  'Turn the connection pool off': 'Tắt connection pool',
+  'Look for slow queries and long transactions that hold connections':
+    'Tìm các query chậm và transaction kéo dài đang giữ kết nối',
+  'Restart the application every night': 'Khởi động lại ứng dụng mỗi đêm',
+  'A huge pool can overload the database. Finding what keeps connections busy fixes the cause instead of hiding it.':
+    'Một pool quá lớn có thể làm quá tải cơ sở dữ liệu. Tìm ra thứ giữ kết nối bận sẽ xử lý nguyên nhân thay vì che giấu nó.',
+  'Testing and quality': 'Kiểm thử và chất lượng',
+  'Write fast unit tests, pick the right Spring Boot test slice, test against real databases and design code that is easy to test.':
+    'Viết unit test nhanh, chọn đúng test slice của Spring Boot, kiểm thử trên cơ sở dữ liệu thật và thiết kế code dễ test.',
+  'Unit tests with JUnit 5 and Mockito': 'Unit test với JUnit 5 và Mockito',
+  'Test one class in isolation, and know what is worth mocking.':
+    'Test một class một cách độc lập, và biết thứ gì đáng để mock.',
+  'A unit test checks one class on its own, with no Spring context and no database, so it runs in milliseconds. JUnit 5 finds and runs the tests. Mockito creates test doubles for the collaborators. Constructor injection makes this easy, because the test can pass the doubles in.':
+    'Một unit test kiểm tra một class riêng lẻ, không có Spring context và không có cơ sở dữ liệu, nên chạy trong vài mili giây. JUnit 5 tìm và chạy các test. Mockito tạo ra các test double cho các collaborator. Constructor injection khiến việc này dễ dàng, vì test có thể truyền các double vào.',
+  'Static imports of when, assertThat and the JUnit and Mockito types are omitted.':
+    'Các static import của when, assertThat và các kiểu của JUnit, Mockito được lược bớt.',
+  'Mock what is slow, random or outside your process: HTTP clients, message brokers, the clock, other services’ repositories.':
+    'Hãy mock những gì chậm, ngẫu nhiên hoặc nằm ngoài process của bạn: HTTP client, message broker, đồng hồ (clock), repository của dịch vụ khác.',
+  'Do not mock the class under test, simple values such as records, or small pure helpers. Use the real ones.':
+    'Đừng mock chính class đang được test, các giá trị đơn giản như record, hay các helper thuần túy nhỏ. Hãy dùng đối tượng thật.',
+  'Check results first: the returned value or the new state. Use verify only for a side effect that matters, such as an email being sent.':
+    'Hãy kiểm tra kết quả trước: giá trị trả về hoặc trạng thái mới. Chỉ dùng verify cho một side effect quan trọng, chẳng hạn một email đã được gửi.',
+  'A test that mirrors every call the code makes breaks whenever you refactor, even when the behaviour is still right.':
+    'Một test lặp lại mọi lời gọi mà code thực hiện sẽ vỡ mỗi khi bạn refactor, ngay cả khi hành vi vẫn đúng.',
+  'Do not call Instant.now() in logic you want to test. Inject a java.time.Clock and give the test a fixed one with Clock.fixed(...).':
+    'Đừng gọi Instant.now() trong logic bạn muốn test. Hãy inject một java.time.Clock và đưa cho test một clock cố định bằng Clock.fixed(...).',
+  'Which collaborator is a good candidate for a mock when you unit test a service?':
+    'Collaborator nào là ứng viên tốt để mock khi bạn unit test một service?',
+  'The class under test itself': 'Chính class đang được test',
+  'A record that holds a money amount': 'Một record chứa số tiền',
+  'A small pure method that formats a string': 'Một method thuần túy nhỏ để định dạng chuỗi',
+  'A client that calls a remote payment API': 'Một client gọi tới API thanh toán từ xa',
+  'Remote calls are slow and unreliable in tests, so you replace them. Real values and pure helpers are simpler and safer to use as they are.':
+    'Các lời gọi từ xa chậm và không ổn định trong test, nên bạn thay chúng đi. Giá trị thật và helper thuần túy thì đơn giản và an toàn hơn khi dùng nguyên bản.',
+  'A test only checks that repository.save() was called once and never looks at what the service returns. What is the risk?':
+    'Một test chỉ kiểm tra repository.save() đã được gọi đúng một lần và không bao giờ xem service trả về gì. Rủi ro là gì?',
+  'verify() is not allowed on mocks': 'verify() không được phép dùng trên mock',
+  'The test is tied to the implementation and can pass while the result is wrong':
+    'Test bị gắn chặt với cách triển khai và vẫn có thể pass trong khi kết quả sai',
+  'The mock will write to a real database': 'Mock sẽ ghi vào cơ sở dữ liệu thật',
+  'The test will run in a different thread': 'Test sẽ chạy trên một thread khác',
+  'Interaction checks describe how the code works, not what it achieves. Asserting the outcome catches real bugs and survives refactoring.':
+    'Việc kiểm tra tương tác mô tả code hoạt động thế nào, chứ không phải nó đạt được gì. Kiểm tra kết quả giúp bắt lỗi thật và vẫn đúng sau khi refactor.',
+  'How can a test control the current time of a class that needs it?':
+    'Làm thế nào để một test điều khiển thời gian hiện tại của một class cần đến nó?',
+  'Inject a java.time.Clock and pass a fixed Clock in the test':
+    'Inject một java.time.Clock và truyền một Clock cố định trong test',
+  'Call Thread.sleep in the test': 'Gọi Thread.sleep trong test',
+  'Change the operating system clock before each run':
+    'Đổi đồng hồ của hệ điều hành trước mỗi lần chạy',
+  'Make the field static': 'Đặt field là static',
+  'When time comes from a Clock dependency, a test can supply any moment it wants, and the result is repeatable.':
+    'Khi thời gian đến từ một dependency Clock, test có thể cung cấp bất kỳ thời điểm nào nó muốn, và kết quả lặp lại được.',
+  'Spring Boot test slices': 'Test slice của Spring Boot',
+  '@WebMvcTest, @DataJpaTest and @SpringBootTest: what each loads and when to use it.':
+    '@WebMvcTest, @DataJpaTest và @SpringBootTest: mỗi cái nạp gì và khi nào nên dùng.',
+  '@SpringBootTest starts the whole application context. A test slice starts only the part you want to test, so it is faster and more focused. Pick the smallest one that covers the risk.':
+    '@SpringBootTest khởi động toàn bộ application context. Một test slice chỉ khởi động phần bạn muốn test, nên nhanh hơn và tập trung hơn. Hãy chọn slice nhỏ nhất đủ bao phủ rủi ro.',
+  '@MockitoBean needs Spring Boot 3.4 or newer. Older 3.x versions use @MockBean.':
+    '@MockitoBean cần Spring Boot 3.4 trở lên. Các bản 3.x cũ hơn dùng @MockBean.',
+  '@WebMvcTest: controllers, JSON, validation, error handling and web security. Your @Service beans are not loaded, so mock them.':
+    '@WebMvcTest: controller, JSON, validation, xử lý lỗi và web security. Các bean @Service của bạn không được nạp, nên hãy mock chúng.',
+  '@DataJpaTest: entities and repositories. Each test runs in a transaction that is rolled back at the end, and by default an embedded database replaces your DataSource.':
+    '@DataJpaTest: entity và repository. Mỗi test chạy trong một transaction được rollback khi kết thúc, và theo mặc định một cơ sở dữ liệu nhúng (embedded) sẽ thay thế DataSource của bạn.',
+  '@SpringBootTest: the full context, optionally with a real server on a random port. Keep a small number of these as end-to-end checks that everything is wired together.':
+    '@SpringBootTest: toàn bộ context, có thể kèm một server thật trên cổng ngẫu nhiên. Hãy giữ một số ít test loại này làm kiểm tra end-to-end rằng mọi thứ đã được nối với nhau.',
+  'Spring caches the context between tests that use the same configuration. Many different mock combinations create many contexts and slow the suite down.':
+    'Spring cache context giữa các test dùng cùng một cấu hình. Nhiều tổ hợp mock khác nhau sẽ tạo ra nhiều context và làm cả bộ test chậm đi.',
+  'Put the rules in plain classes and test them with plain unit tests. Use slices only for the parts that need Spring.':
+    'Hãy đặt các quy tắc vào các class thông thường và test chúng bằng unit test thông thường. Chỉ dùng slice cho những phần thật sự cần Spring.',
+  'A controller needs an OrderService. What do you do with it in a @WebMvcTest?':
+    'Một controller cần một OrderService. Bạn xử lý nó thế nào trong @WebMvcTest?',
+  'Provide a mock of it, for example with @MockitoBean or @MockBean':
+    'Cung cấp một mock của nó, ví dụ bằng @MockitoBean hoặc @MockBean',
+  'Nothing: @WebMvcTest scans and loads every @Service':
+    'Không làm gì: @WebMvcTest quét và nạp mọi @Service',
+  'Add @DataJpaTest to the same class': 'Thêm @DataJpaTest vào cùng class',
+  'Make the service class static': 'Đặt class service là static',
+  '@WebMvcTest loads only the web layer. A bean the controller depends on must be supplied by you, and a mock keeps the test focused on the controller.':
+    '@WebMvcTest chỉ nạp tầng web. Một bean mà controller phụ thuộc phải do bạn cung cấp, và một mock giúp test tập trung vào controller.',
+  'What does @DataJpaTest do with the data a test changes?':
+    '@DataJpaTest làm gì với dữ liệu mà một test thay đổi?',
+  'It commits them so the next test can see them': 'Nó commit để test kế tiếp nhìn thấy',
+  'It writes them to the production database': 'Nó ghi vào cơ sở dữ liệu production',
+  'It keeps them until the application context closes':
+    'Nó giữ lại cho đến khi application context đóng',
+  'It rolls the changes back when the test ends, by default':
+    'Theo mặc định, nó rollback các thay đổi khi test kết thúc',
+  'Rolling back after each test keeps tests independent of each other without manual cleanup.':
+    'Rollback sau mỗi test giúp các test độc lập với nhau mà không cần dọn dẹp thủ công.',
+  'Which kind of test is the right use of @SpringBootTest?':
+    'Loại test nào là cách dùng đúng của @SpringBootTest?',
+  'Every unit test of business logic': 'Mọi unit test của business logic',
+  'Every test of a single controller': 'Mọi test của một controller riêng lẻ',
+  'Every test of a single repository method': 'Mọi test của một method repository riêng lẻ',
+  'A small number of end-to-end tests that check the whole application starts and is wired together':
+    'Một số ít test end-to-end kiểm tra toàn bộ ứng dụng khởi động được và được nối đúng với nhau',
+  'Starting the full context is slow. It pays off for a few broad checks, while logic and single layers are better tested with unit tests and slices.':
+    'Khởi động toàn bộ context rất chậm. Nó đáng giá với một vài kiểm tra bao quát, còn logic và từng tầng riêng lẻ thì test tốt hơn bằng unit test và slice.',
+  'Integration tests with Testcontainers': 'Integration test với Testcontainers',
+  'Run tests against a real database in a throwaway container.':
+    'Chạy test trên một cơ sở dữ liệu thật trong một container dùng một lần.',
+  'An in-memory database such as H2 is not your production database. SQL dialects, column types and locking behave differently, so a test can pass on H2 and fail on PostgreSQL. Testcontainers starts a real database in a Docker container for the test run and removes it afterwards. It needs Docker, or a compatible container runtime, on every machine that runs these tests, including CI.':
+    'Một cơ sở dữ liệu in-memory như H2 không phải là cơ sở dữ liệu production của bạn. Phương ngữ SQL, kiểu cột và cơ chế khóa hoạt động khác nhau, nên một test có thể pass trên H2 nhưng lỗi trên PostgreSQL. Testcontainers khởi động một cơ sở dữ liệu thật trong container Docker cho lần chạy test rồi xóa nó đi sau đó. Nó cần Docker, hoặc một container runtime tương thích, trên mọi máy chạy các test này, kể cả CI.',
+  'Spring Boot 3.1 or newer with the spring-boot-testcontainers dependency. @ServiceConnection points the DataSource at the container.':
+    'Spring Boot 3.1 trở lên với dependency spring-boot-testcontainers. @ServiceConnection trỏ DataSource tới container.',
+  'Replace.NONE tells @DataJpaTest to use the container instead of an embedded database.':
+    'Replace.NONE bảo @DataJpaTest dùng container thay vì cơ sở dữ liệu nhúng.',
+  'A static container is started once and shared by all tests in the class. A non-static one is started for every test method.':
+    'Một container static được khởi động một lần và dùng chung cho mọi test trong class. Một container không static sẽ được khởi động cho mỗi method test.',
+  'Let Testcontainers choose a random free port. Do not fix the port.':
+    'Hãy để Testcontainers chọn một cổng trống ngẫu nhiên. Đừng cố định cổng.',
+  'Use the same database image version as production. Your Flyway or Liquibase migrations then run against the real database too.':
+    'Hãy dùng cùng phiên bản image cơ sở dữ liệu như production. Khi đó các migration Flyway hoặc Liquibase của bạn cũng chạy trên cơ sở dữ liệu thật.',
+  'Many teams name these tests *IT so the build can run them in a separate, slower step from the fast unit tests.':
+    'Nhiều đội đặt tên các test này là *IT để quá trình build chạy chúng ở một bước riêng, chậm hơn, tách khỏi các unit test nhanh.',
+  'Share one container between several test classes with a common base class or a singleton, so you pay the start-up cost once.':
+    'Hãy dùng chung một container giữa nhiều class test bằng một base class hoặc singleton, để chỉ trả chi phí khởi động một lần.',
+  'Why use Testcontainers instead of H2 for repository tests?':
+    'Vì sao dùng Testcontainers thay vì H2 cho test repository?',
+  'The tests run on the same kind of database as production, so differences show up early':
+    'Test chạy trên cùng loại cơ sở dữ liệu như production, nên các khác biệt lộ ra sớm',
+  'H2 cannot run SQL at all': 'H2 hoàn toàn không chạy được SQL',
+  'Containers always start faster than an in-memory database':
+    'Container luôn khởi động nhanh hơn cơ sở dữ liệu in-memory',
+  'Testcontainers works without Docker': 'Testcontainers hoạt động mà không cần Docker',
+  'Dialect, type and locking differences are hidden by H2. A real database in a container exposes them before production does.':
+    'H2 che giấu các khác biệt về phương ngữ, kiểu dữ liệu và cơ chế khóa. Một cơ sở dữ liệu thật trong container làm chúng lộ ra trước khi production làm điều đó.',
+  'What does @ServiceConnection do in a Spring Boot test?':
+    '@ServiceConnection làm gì trong một test Spring Boot?',
+  'It starts the Docker daemon on your computer':
+    'Nó khởi động Docker daemon trên máy tính của bạn',
+  'It connects two Spring beans together': 'Nó nối hai bean Spring với nhau',
+  'It configures the connection details, such as the DataSource URL, from the running container':
+    'Nó cấu hình thông tin kết nối, chẳng hạn URL của DataSource, từ container đang chạy',
+  'It encrypts the database connection': 'Nó mã hóa kết nối cơ sở dữ liệu',
+  'Spring Boot reads the host, port and credentials from the container, so you do not set the properties by hand.':
+    'Spring Boot đọc host, cổng và thông tin đăng nhập từ container, nên bạn không phải đặt các property bằng tay.',
+  'Why is the container field declared static?': 'Vì sao field container được khai báo là static?',
+  'JUnit requires every field to be static': 'JUnit yêu cầu mọi field phải là static',
+  'So the container keeps running after the JVM exits':
+    'Để container tiếp tục chạy sau khi JVM thoát',
+  'So other machines can connect to the container': 'Để các máy khác có thể kết nối tới container',
+  'One container is started for all the tests in the class, not one per test method':
+    'Một container được khởi động cho tất cả test trong class, thay vì một container cho mỗi method test',
+  'Starting a database takes seconds. With a static field the cost is paid once per class.':
+    'Khởi động một cơ sở dữ liệu mất vài giây. Với field static, chi phí chỉ phải trả một lần cho mỗi class.',
+  'Testable code and readable tests': 'Code dễ test và test dễ đọc',
+  'Design for testing, structure tests as given-when-then and use AssertJ well.':
+    'Thiết kế để dễ test, cấu trúc test theo given-when-then và dùng AssertJ cho tốt.',
+  'Code is hard to test when it hides its dependencies: new inside methods, static calls, global singletons, and logic mixed with I/O. Pass dependencies in through the constructor, and keep pure decisions in small methods that take values and return values.':
+    'Code khó test khi nó giấu các dependency của mình: new ngay trong method, lời gọi static, singleton toàn cục, và logic trộn lẫn với I/O. Hãy truyền dependency vào qua constructor, và giữ các quyết định thuần túy trong những method nhỏ nhận giá trị và trả về giá trị.',
+  'Given, when, then: set up, act once, check the outcome.':
+    'Given, when, then: chuẩn bị, thực hiện một lần, kiểm tra kết quả.',
+  'One test method, several cases.': 'Một method test, nhiều trường hợp.',
+  'Name a test after the behaviour, such as rejectsAnOrderWithoutItems, not test1 or testValidate.':
+    'Hãy đặt tên test theo hành vi, chẳng hạn rejectsAnOrderWithoutItems, chứ không phải test1 hay testValidate.',
+  'One behaviour per test, so a failure tells you what broke.':
+    'Một hành vi cho mỗi test, để khi lỗi bạn biết cái gì đã hỏng.',
+  'AssertJ reads like a sentence and explains the difference when it fails. Use containsExactly for a list in order, and containsExactlyInAnyOrder when order does not matter.':
+    'AssertJ đọc như một câu văn và giải thích sự khác biệt khi lỗi. Dùng containsExactly cho một list có thứ tự, và containsExactlyInAnyOrder khi thứ tự không quan trọng.',
+  'Tests must be independent: no shared mutable state, no required order and no Thread.sleep.':
+    'Các test phải độc lập: không có trạng thái mutable dùng chung, không yêu cầu thứ tự chạy và không có Thread.sleep.',
+  'If a test needs a lot of setup, the class probably has too many dependencies. Treat that as feedback about the design.':
+    'Nếu một test cần rất nhiều bước chuẩn bị, class đó có lẽ có quá nhiều dependency. Hãy coi đó là phản hồi về thiết kế.',
+  'Which test method name describes behaviour best?': 'Tên method test nào mô tả hành vi tốt nhất?',
+  test1: 'test1',
+  testValidate: 'testValidate',
+  rejectsAnOrderWithoutItems: 'rejectsAnOrderWithoutItems',
+  orderServiceTest: 'orderServiceTest',
+  'A good name says what should happen, so a failing test report already tells you what broke.':
+    'Một cái tên tốt cho biết điều gì cần xảy ra, nên báo cáo test lỗi đã cho bạn biết cái gì hỏng.',
+  'What does AssertJ’s containsExactly check on a list?':
+    'containsExactly của AssertJ kiểm tra điều gì trên một list?',
+  'That it has these elements in any order': 'Có các phần tử này theo thứ tự bất kỳ',
+  'That it has exactly these elements, in this order':
+    'Có đúng các phần tử này, theo đúng thứ tự này',
+  'That it contains at least one of these elements': 'Chứa ít nhất một trong các phần tử này',
+  'That it has the same size, whatever the elements': 'Có cùng kích thước, bất kể các phần tử',
+  'containsExactly is strict about both elements and order. Use containsExactlyInAnyOrder when the order is not part of the behaviour.':
+    'containsExactly nghiêm ngặt về cả phần tử lẫn thứ tự. Hãy dùng containsExactlyInAnyOrder khi thứ tự không thuộc về hành vi.',
+  'Which change makes a service easier to unit test?':
+    'Thay đổi nào giúp một service dễ unit test hơn?',
+  'Make all its methods static': 'Biến mọi method của nó thành static',
+  'Reach its dependencies through a global getInstance() singleton':
+    'Lấy các dependency qua một singleton toàn cục getInstance()',
+  'Add more private helper methods': 'Thêm nhiều method private hỗ trợ hơn',
+  'Receive its collaborators through the constructor instead of creating them with new inside methods':
+    'Nhận các collaborator qua constructor thay vì tạo chúng bằng new bên trong method',
+  'With constructor injection a test passes in doubles. New objects, static calls and singletons are hidden dependencies that a test cannot replace.':
+    'Với constructor injection, test truyền vào các double. Đối tượng new, lời gọi static và singleton là các dependency ẩn mà test không thể thay thế.',
 };

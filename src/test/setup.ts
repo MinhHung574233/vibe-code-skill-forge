@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import 'fake-indexeddb/auto';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
 import { registerDictionary } from '../i18n/core';
 import { VI } from '../i18n/vi';
@@ -18,6 +18,9 @@ if (typeof HTMLDialogElement !== 'undefined') {
     this.removeAttribute('open');
   };
 }
+
+// findBy*/waitFor default to 1 s, too tight when ~100 test files run in parallel (300-word lists, engines).
+configure({ asyncUtilTimeout: 10_000 });
 
 afterEach(() => {
   cleanup();

@@ -286,4 +286,19 @@ export const go: Record<string, string> = {
     'Trắng có một quân bên trong. Điểm cạnh nó ở phía trong là điểm ngăn Đen tạo hai mắt.',
   'Only the corner point lives. The other points, including filling an eye, leave Black one eye short.':
     'Chỉ có điểm góc là sống. Các điểm khác, kể cả lấp một mắt, đều khiến Đen thiếu một mắt.',
+
+  // ---- saving a finished game ------------------------------------------------------------------
+  'Game not saved yet': 'Ván chưa được lưu',
+  'This game is over, but its result has not been saved yet.':
+    'Ván này đã kết thúc nhưng kết quả chưa được lưu.',
+  'Try saving again': 'Thử lưu lại',
+  'The game is over, but its result is not saved yet.':
+    'Ván đã kết thúc nhưng kết quả chưa được lưu.',
+  'Saving the result…': 'Đang lưu kết quả…',
+  'Result not saved': 'Chưa lưu được kết quả',
+  'Your progress could not be saved.': 'Không lưu được tiến độ của bạn.',
+  'The game could not be saved. Check storage space in Settings and try again.':
+    'Không thể lưu ván cờ. Hãy kiểm tra dung lượng lưu trữ trong Cài đặt rồi thử lại.',
+  'Your result is kept on this device. Try again now, or come back to it later.':
+    'Kết quả của bạn vẫn được giữ trên thiết bị này. Hãy thử lại ngay, hoặc quay lại sau.',
 };

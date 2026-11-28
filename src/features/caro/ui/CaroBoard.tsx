@@ -1,11 +1,12 @@
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { t } from '@/i18n/core';
 import { cn } from '@/utils/cn';
-import type { BoardSize, Stone } from '../domain/board';
+import { OBSTACLE, type BoardSize, type Stone } from '../domain/board';
+import { cellName, columnLetter } from './labels';
 
 interface CaroBoardProps {
   size: BoardSize;
-  /** 0 empty, 1 / 2 stones. */
+  /** 0 empty, 1 / 2 stones, OBSTACLE (3) a blocked square. */
   cells: Uint8Array;
   /** The stone the person plays (only used to word the cell labels). */
   humanStone: Stone;
@@ -34,7 +35,11 @@ const STAR_POINTS: Record<BoardSize, readonly (readonly [number, number])[]> = {
     [6, 2],
     [6, 6],
   ],
+  19: [3, 9, 15].flatMap((r) => [3, 9, 15].map((c) => [r, c] as const)),
 };
+
+/** Width of the strip left of and above the grid that carries the coordinate labels (in cells). */
+const MARGIN = 0.62;
 
 /** Stone 1 is a filled disc, stone 2 a hollow one: told apart by shape, not by colour alone. */
 function StoneMark({
@@ -70,11 +75,15 @@ function describeCell(
   humanStone: Stone,
   extra: string[],
 ): string {
-  const row = Math.floor(index / size) + 1;
-  const col = (index % size) + 1;
   const who =
-    stone === 0 ? t('empty') : stone === humanStone ? t('your stone') : t('computer stone');
-  return [t('Row {row}, column {col}, {who}', { row, col, who }), ...extra].join(', ');
+    stone === 0
+      ? t('empty')
+      : stone === OBSTACLE
+        ? t('blocked square')
+        : stone === humanStone
+          ? t('your stone')
+          : t('computer stone');
+  return [t('{cell}, {who}', { cell: cellName(size, index), who }), ...extra].join(', ');
 }
 
 /**
@@ -84,7 +93,10 @@ function describeCell(
  *
  * On a 375 pt phone a 15x15 cell is only about 23 pt wide, below the 44 pt target. The page
  * therefore offers "confirm each move" (tap to aim, tap again or press Place stone), which
- * turns a mis-tap into a correction instead of a lost move.
+ * turns a mis-tap into a correction instead of a lost move. A 19x19 cell is about 20 pt wide.
+ *
+ * Blocked squares are drawn dark and hatched and are not buttons: nobody can play there and
+ * they are skipped by the arrow keys. They still have an accessible name.
  */
 export function CaroBoard({
   size,
@@ -97,6 +109,7 @@ export function CaroBoard({
   onSelect,
 }: CaroBoardProps) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const hatchId = `caro-hatch-${useId().replace(/:/g, '')}`;
   const [focusIndex, setFocusIndex] = useState(Math.floor((size * size) / 2));
   const onWinLine = new Set(winLine);
   const first = winLine[0];
@@ -119,22 +132,76 @@ export function CaroBoard({
     const delta = step[event.key];
     if (!delta) return;
     event.preventDefault();
-    const nextRow = Math.min(size - 1, Math.max(0, row + delta[0]));
-    const nextCol = Math.min(size - 1, Math.max(0, col + delta[1]));
+    // Step over blocked squares; stay put when the edge is reached first.
+    let nextRow = row + delta[0];
+    let nextCol = col + delta[1];
+    while (
+      nextRow >= 0 &&
+      nextRow < size &&
+      nextCol >= 0 &&
+      nextCol < size &&
+      cells[nextRow * size + nextCol] === OBSTACLE
+    ) {
+      nextRow += delta[0];
+      nextCol += delta[1];
+    }
+    if (nextRow < 0 || nextRow >= size || nextCol < 0 || nextCol >= size) return;
     moveFocus(nextRow * size + nextCol);
   };
 
   const lines = Array.from({ length: size }, (_, k) => k + 0.5);
+  const total = size + MARGIN;
+  const inset = `${(MARGIN / total) * 100}%`;
 
   return (
     <div className="relative aspect-square w-full touch-manipulation select-none">
       <svg
-        viewBox={`0 0 ${size} ${size}`}
+        viewBox={`${-MARGIN} ${-MARGIN} ${total} ${total}`}
         className="absolute inset-0 size-full"
         aria-hidden="true"
         focusable="false"
       >
-        <rect width={size} height={size} rx={0.35} style={{ fill: 'var(--accent-soft)' }} />
+        <defs>
+          <pattern
+            id={hatchId}
+            width={0.26}
+            height={0.26}
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <rect width={0.26} height={0.26} style={{ fill: 'var(--text)' }} />
+            <line
+              x1={0}
+              y1={0}
+              x2={0}
+              y2={0.26}
+              style={{ stroke: 'var(--bg)', strokeWidth: 0.09 }}
+            />
+          </pattern>
+        </defs>
+        <rect
+          x={-MARGIN}
+          y={-MARGIN}
+          width={total}
+          height={total}
+          rx={0.35}
+          style={{ fill: 'var(--accent-soft)' }}
+        />
+        <g
+          style={{ fill: 'var(--text-muted)', fontSize: 0.42, textAnchor: 'middle' }}
+          fontFamily="inherit"
+        >
+          {lines.map((p, k) => (
+            <g key={p}>
+              <text x={p} y={-0.2}>
+                {columnLetter(k)}
+              </text>
+              <text x={-0.3} y={p + 0.15}>
+                {size - k}
+              </text>
+            </g>
+          ))}
+        </g>
         <g style={{ stroke: 'var(--text-muted)', strokeWidth: 0.04 }}>
           {lines.map((p) => (
             <g key={p}>
@@ -153,7 +220,20 @@ export function CaroBoard({
           />
         ))}
         {Array.from(cells, (stone, index) =>
-          stone === 0 ? null : (
+          stone !== OBSTACLE ? null : (
+            <rect
+              key={`blocked-${index}`}
+              x={(index % size) + 0.06}
+              y={Math.floor(index / size) + 0.06}
+              width={0.88}
+              height={0.88}
+              rx={0.1}
+              style={{ fill: `url(#${hatchId})`, stroke: 'var(--text)', strokeWidth: 0.05 }}
+            />
+          ),
+        )}
+        {Array.from(cells, (stone, index) =>
+          stone === 0 || stone === OBSTACLE ? null : (
             <StoneMark
               key={index}
               stone={stone === 1 ? 1 : 2}
@@ -220,8 +300,9 @@ export function CaroBoard({
         aria-label={t('Caro board, {size} by {size}', { size })}
         aria-rowcount={size}
         aria-colcount={size}
-        className="absolute inset-0 grid"
+        className="absolute grid"
         style={{
+          inset: `${inset} 0 0 ${inset}`,
           gridTemplateColumns: `repeat(${size}, 1fr)`,
           gridTemplateRows: `repeat(${size}, 1fr)`,
         }}
@@ -234,6 +315,15 @@ export function CaroBoard({
               if (index === lastMove) extra.push(t('last move'));
               if (onWinLine.has(index)) extra.push(t('winning line'));
               if (index === preview) extra.push(t('selected'));
+              if (cells[index] === OBSTACLE) {
+                return (
+                  <div
+                    key={col}
+                    role="gridcell"
+                    aria-label={describeCell(size, index, OBSTACLE, humanStone, [])}
+                  />
+                );
+              }
               return (
                 <div key={col} role="gridcell" className="relative">
                   <button

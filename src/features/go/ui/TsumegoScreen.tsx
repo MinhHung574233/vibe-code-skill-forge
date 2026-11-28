@@ -63,6 +63,7 @@ function ProblemView({ problem, nextId }: { problem: TsumegoProblem; nextId: str
   const [revealed, setRevealed] = useState(false);
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
 
   const wasSolved = progress?.get(problem.id)?.solved === 1;
   const targetPoint = pointIndex(problem, problem.target);
@@ -100,21 +101,30 @@ function ProblemView({ problem, nextId }: { problem: TsumegoProblem; nextId: str
   };
 
   const markSolved = async () => {
-    // Revealing the answer first means this is not a solve (and earns nothing).
-    const { firstSolve } = await repository.recordPuzzleAttempt(problem.id, !revealed);
-    if (!firstSolve) return;
-    const now = systemClock.now();
-    const response = await trainingEngine.recordSession({
-      id: `go-puzzle:${problem.id}`,
-      moduleId: 'go',
-      activityType: 'game_session',
-      startedAt: Math.min(startedAt.current, now - 1000),
-      endedAt: now,
-      source: 'timer',
-      score: 1,
-      result: { kind: 'tsumego', puzzleId: problem.id },
-    });
-    if (response.ok) setOutcome(response.value);
+    setSaveFailed(false);
+    try {
+      // Revealing the answer first means this is not a solve (and earns nothing).
+      await repository.recordPuzzleAttempt(problem.id, !revealed);
+      if (revealed) return;
+      // The session is recorded on every real solve, not only the first: the engine keeps one
+      // session per problem (a repeat is a no-op), so a save that failed earlier is made good by
+      // retrying, and solving again can never farm XP.
+      const now = systemClock.now();
+      const response = await trainingEngine.recordSession({
+        id: `go-puzzle:${problem.id}`,
+        moduleId: 'go',
+        activityType: 'game_session',
+        startedAt: Math.min(startedAt.current, now - 1000),
+        endedAt: now,
+        source: 'timer',
+        score: 1,
+        result: { kind: 'tsumego', puzzleId: problem.id },
+      });
+      if (!response.ok) setSaveFailed(true);
+      else if (!response.value.duplicate) setOutcome(response.value);
+    } catch {
+      setSaveFailed(true);
+    }
   };
 
   const retry = () => {
@@ -182,6 +192,17 @@ function ProblemView({ problem, nextId }: { problem: TsumegoProblem; nextId: str
           </Card>
         )}
       </div>
+
+      {saveFailed && (
+        <div className="mt-3 space-y-2">
+          <p role="alert" className="type-subhead text-danger">
+            {t('Your progress could not be saved.')}
+          </p>
+          <Button variant="secondary" fullWidth onClick={() => void markSolved()}>
+            {t('Try saving again')}
+          </Button>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col gap-2">
         {verdict?.kind === 'wrong' && <Button onClick={retry}>{t('Try again')}</Button>}

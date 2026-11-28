@@ -27,7 +27,7 @@ describe('Java module', () => {
     renderAt('/practice/java');
     expect(await screen.findByText('Java core')).toBeInTheDocument();
     expect(screen.getByText('Spring Boot essentials')).toBeInTheDocument();
-    expect(screen.getByText(/0 of 12 lessons/)).toBeInTheDocument();
+    expect(screen.getByText(/0 of 20 lessons/)).toBeInTheDocument();
   });
 
   it('read, pass the quiz, complete the lesson once and earn XP once', async () => {

@@ -1,4 +1,5 @@
 import { caro } from './caro';
+import { caroHandbook } from './caroHandbook';
 import { chess } from './chess';
 import { common } from './common';
 import { english } from './english';
@@ -19,6 +20,7 @@ export const VI: Readonly<Record<string, string>> = {
   ...java,
   ...tools,
   ...caro,
+  ...caroHandbook,
   ...chess,
   ...go,
 };

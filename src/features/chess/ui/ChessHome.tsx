@@ -7,6 +7,7 @@ import { StatTile } from '@/components/StatTile';
 import { t } from '@/i18n/core';
 import { OPENINGS } from '../domain/openings';
 import { PUZZLES } from '../domain/puzzles';
+import { BeatHardTips } from './BeatHardTips';
 import { sideName } from './labels';
 import { CHESS_BASE, LEVEL_LABEL, useChessSummary } from './useChess';
 
@@ -25,7 +26,7 @@ export function ChessHome() {
           {summary.draft && (
             <Card className="mb-4" role="region" aria-labelledby="resume-heading">
               <h2 id="resume-heading" className="type-headline">
-                {t('Game in progress')}
+                {summary.draft.finished ? t('Game not saved yet') : t('Game in progress')}
               </h2>
               <p className="mt-1 type-subhead text-muted">
                 {t('{level} engine, you play {color}, {n} moves played.', {
@@ -34,11 +35,16 @@ export function ChessHome() {
                   n: summary.draft.moves.length,
                 })}
               </p>
+              {summary.draft.finished && (
+                <p className="mt-1 type-subhead text-muted">
+                  {t('This game is over, but its result has not been saved yet.')}
+                </p>
+              )}
               <Link
                 to={`${CHESS_BASE}/play`}
                 className="mt-3 inline-flex min-h-[50px] w-full items-center justify-center rounded-xl bg-accent px-5 type-headline text-on-accent active:scale-[0.98] active:opacity-80"
               >
-                {t('Resume game')}
+                {summary.draft.finished ? t('Try saving again') : t('Resume game')}
               </Link>
             </Card>
           )}
@@ -97,7 +103,7 @@ export function ChessHome() {
         />
         <ListRow
           title={t('Play the engine')}
-          subtitle={t('Three levels, undo and resign')}
+          subtitle={t('Three levels, coach mode, undo and resign')}
           icon="chess"
           iconColor="#64748b"
           to={`${CHESS_BASE}/play`}
@@ -110,6 +116,8 @@ export function ChessHome() {
           to={`${CHESS_BASE}/openings`}
         />
       </Section>
+
+      <BeatHardTips />
     </Screen>
   );
 }

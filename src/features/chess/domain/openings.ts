@@ -29,7 +29,8 @@ export const OPENINGS: readonly Opening[] = [
     name: 'Italian Game (Giuoco Pianissimo)',
     eco: 'C54',
     side: 'w',
-    summary: 'A calm, classical plan: develop quickly, castle, and prepare a central break with d4.',
+    summary:
+      'A calm, classical plan: develop quickly, castle, and prepare a central break with d4.',
     ideas: [
       'The bishop on c4 eyes f7, Black’s weakest square.',
       'c3 and d3 build a solid centre; d4 comes later when it is prepared.',
@@ -137,7 +138,8 @@ export const OPENINGS: readonly Opening[] = [
     name: 'London System',
     eco: 'D02',
     side: 'w',
-    summary: 'A set-up you can play against almost anything: bishop out, solid pawns, simple plans.',
+    summary:
+      'A set-up you can play against almost anything: bishop out, solid pawns, simple plans.',
     ideas: [
       'Develop the dark-squared bishop to f4 before closing the diagonal with e3.',
       'c3 and Nbd2 make a compact structure; Ne5 is the favourite outpost.',
@@ -353,7 +355,10 @@ export const OPENINGS: readonly Opening[] = [
       { san: 'exd5' },
       { san: 'Qxd5' },
       { san: 'Nc3' },
-      { san: 'Qa5', note: 'Step off the d-file; from a5 the queen pins the c3 knight against the king’s side.' },
+      {
+        san: 'Qa5',
+        note: 'Step off the d-file; from a5 the queen pins the c3 knight against the king’s side.',
+      },
       { san: 'd4' },
       { san: 'Nf6' },
       { san: 'Nf3' },

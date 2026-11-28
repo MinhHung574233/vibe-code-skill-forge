@@ -1,12 +1,17 @@
 import { otherStone, type BoardSize, type Stone } from './board';
 import { stoneCount, stoneToMove, undoMoves, type GameState, type GameStatus } from './game';
 import type { Level } from './ai/levels';
+import type { CaroRule } from './rules';
 
 export type Outcome = 'win' | 'loss' | 'draw';
 
 /** Everything chosen on the setup screen. */
 export interface CaroSetup {
   size: BoardSize;
+  /** 'freestyle' (five or more wins) or 'blocked' (a five walled in at both ends does not win). */
+  rule: CaroRule;
+  /** Blocked squares, chosen once at game start and stored so a resumed game is identical. */
+  obstacles: readonly number[];
   level: Level;
   /** The stone the person plays; 1 moves first. The computer plays the other. */
   humanStone: Stone;

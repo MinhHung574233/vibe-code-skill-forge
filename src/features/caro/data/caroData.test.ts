@@ -56,6 +56,8 @@ afterEach(async () => {
 const draft = (over: Partial<CaroDraft> = {}): CaroDraft => ({
   id: 'game-1',
   size: 15,
+  rule: 'freestyle',
+  obstacles: [],
   level: 'medium',
   humanStone: 1,
   startedAt: clock.now() - 10 * MIN,
@@ -99,6 +101,102 @@ describe('game draft', () => {
   });
 });
 
+describe('game draft: rule and blocked squares', () => {
+  const j = (r: number, c: number) => cellIndex(19, r, c);
+  const OBSTACLES = [j(3, 3), j(3, 15), j(15, 9)];
+
+  it('loads a game saved before rules existed as a classic game', async () => {
+    await db.drafts.put({ key: DRAFT_KEY, value: { ...STORED, moves: [112, 113] }, updatedAt: 1 });
+    expect(await loadDraft(db)).toEqual({
+      ...STORED,
+      moves: [112, 113],
+      rule: 'freestyle',
+      obstacles: [],
+    });
+  });
+
+  it('round-trips the tournament variant, obstacles included, and replays it', async () => {
+    const saved = draft({
+      size: 19,
+      rule: 'blocked',
+      obstacles: OBSTACLES,
+      moves: [j(9, 9), j(9, 10), j(8, 9)],
+    });
+    await saveDraft(db, saved, clock.now());
+    expect(await loadDraft(db)).toEqual(saved);
+  });
+
+  it.each([
+    ['an unknown rule', { rule: 'renju' }],
+    ['a layout with touching squares', { obstacles: [j(3, 3), j(3, 4), j(15, 9)] }],
+    ['a square on the centre block', { obstacles: [j(9, 9), j(3, 15), j(15, 3)] }],
+    ['a square on the outer ring', { obstacles: [j(0, 3), j(3, 15), j(15, 3)] }],
+    ['an unoffered number of squares', { obstacles: [j(3, 3)] }],
+    ['a move on a blocked square', { obstacles: OBSTACLES, moves: [j(9, 9), OBSTACLES[0]!] }],
+  ])('treats %s as no saved game', async (_name, over) => {
+    const value = { ...STORED, size: 19, rule: 'blocked', obstacles: OBSTACLES, ...over };
+    await db.drafts.put({ key: DRAFT_KEY, value, updatedAt: 1 });
+    expect(await loadDraft(db)).toBeNull();
+  });
+
+  it('accepts a 19 x 19 game', async () => {
+    await db.drafts.put({ key: DRAFT_KEY, value: { ...STORED, size: 19 }, updatedAt: 1 });
+    expect(await loadDraft(db)).toMatchObject({ size: 19 });
+  });
+});
+
+describe('finished games: variant', () => {
+  it('records the rule and the number of blocked squares in the result', async () => {
+    await saveFinishedGame(db, {
+      id: 'game-v',
+      level: 'hard',
+      outcome: 'win',
+      size: 19,
+      rule: 'blocked',
+      obstacles: 3,
+      moves: 40,
+      firstMover: 'player',
+      undos: 0,
+      startedAt: clock.now() - 20 * MIN,
+      endedAt: clock.now(),
+    });
+    expect(await db.gameRecords.get('game-v')).toMatchObject({
+      details: { size: 19, rule: 'blocked', obstacles: 3, moves: 40 },
+    });
+    expect(await loadFinishedGames(db)).toEqual([
+      expect.objectContaining({ id: 'game-v', size: 19, rule: 'blocked', obstacles: 3 }),
+    ]);
+  });
+
+  it('reads results stored before variants as classic games', async () => {
+    await db.gameRecords.put({
+      id: 'old',
+      game: 'caro',
+      level: 'easy',
+      result: 'win',
+      details: { size: 15, moves: 12 },
+      startedAt: 1,
+      endedAt: 100,
+      localDate: '2026-11-01',
+    });
+    expect((await loadFinishedGames(db))[0]).toMatchObject({ rule: 'freestyle', obstacles: 0 });
+  });
+
+  it('finishGame stores the variant played', async () => {
+    const d = draft({ rule: 'blocked' });
+    await saveDraft(db, { ...d, moves: WINNING_MOVES }, clock.now());
+    const result = await finishGame(
+      { db, engine: new DexieTrainingEngine(db, clock), clock },
+      d,
+      replay(15, WINNING_MOVES, { rule: 'blocked' }),
+    );
+    expect(result.ok).toBe(true);
+    expect(await db.gameRecords.get('game-1')).toMatchObject({
+      details: { rule: 'blocked', obstacles: 0 },
+    });
+  });
+});
+
 describe('finished games', () => {
   it('stores the result with size, move count, who started and a local date', async () => {
     await saveFinishedGame(db, {
@@ -106,6 +204,8 @@ describe('finished games', () => {
       level: 'hard',
       outcome: 'loss',
       size: 9,
+      rule: 'freestyle',
+      obstacles: 0,
       moves: 31,
       firstMover: 'computer',
       undos: 0,
@@ -117,7 +217,14 @@ describe('finished games', () => {
       game: 'caro',
       level: 'hard',
       result: 'loss',
-      details: { size: 9, moves: 31, firstMover: 'computer', undos: 0 },
+      details: {
+        size: 9,
+        rule: 'freestyle',
+        obstacles: 0,
+        moves: 31,
+        firstMover: 'computer',
+        undos: 0,
+      },
       startedAt: clock.now() - 20 * MIN,
       endedAt: clock.now(),
       localDate: '2026-11-25',
@@ -274,5 +381,39 @@ describe('finishGame', () => {
     expect(retry.ok).toBe(true);
     expect(await loadDraft(db)).toBeNull();
     expect(await db.xpLedger.count()).toBe(1);
+  });
+
+  it('survives a recorder that throws: the retry saves the result once and pays XP once, for the same end time', async () => {
+    const d = draft();
+    await saveDraft(db, { ...d, moves: WINNING_MOVES }, clock.now());
+    const real = new DexieTrainingEngine(db, clock);
+    let calls = 0;
+    const flaky = {
+      db,
+      clock,
+      endedAt: clock.now() - 5_000,
+      engine: {
+        recordSession: (input: Parameters<typeof real.recordSession>[0]) => {
+          calls += 1;
+          return calls === 1
+            ? Promise.reject(new Error('quota exceeded'))
+            : real.recordSession(input);
+        },
+      },
+    };
+    const first = await finishGame(flaky, d, replay(15, WINNING_MOVES));
+    expect(first).toEqual({ ok: false, message: 'Could not save the game result. Try again.' });
+    expect(await loadDraft(db)).not.toBeNull(); // kept: the finished board comes back on resume
+    expect(await db.xpLedger.count()).toBe(0);
+
+    clock.advance(30_000); // the person taps "Try saving again" a little later
+    const second = await finishGame(flaky, d, replay(15, WINNING_MOVES));
+    expect(second.ok).toBe(true);
+    expect(calls).toBe(2);
+    expect(await db.gameRecords.count()).toBe(1);
+    expect((await db.gameRecords.get('game-1'))?.endedAt).toBe(flaky.endedAt);
+    expect(await db.sessions.count()).toBe(1);
+    expect(await db.xpLedger.count()).toBe(1);
+    expect(await loadDraft(db)).toBeNull();
   });
 });

@@ -50,6 +50,7 @@ type Message = { tone: 'good' | 'bad' | 'info'; text: string };
 export function PuzzlesScreen() {
   const trainingEngine = useTrainingEngine();
   const [ready, setReady] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [run, setRun] = useState<PuzzleRun | null>(null);
   const [practice, setPractice] = useState(false);
   const [rating, setRating] = useState<RatingState | null>(null);
@@ -59,6 +60,8 @@ export function PuzzlesScreen() {
   const [revealing, setRevealing] = useState(false);
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
+  /** The solved run whose result could not be saved; the retry button records it again. */
+  const [unsaved, setUnsaved] = useState<PuzzleRun | null>(null);
 
   const solvedRef = useRef<Set<string>>(new Set());
   const startedAt = useRef(0);
@@ -83,6 +86,7 @@ export function PuzzlesScreen() {
     setFeedback(null);
     setRevealing(false);
     setRatingDelta(null);
+    setUnsaved(null);
   }, []);
 
   // load progress once, then pick the first puzzle
@@ -99,6 +103,9 @@ export function PuzzlesScreen() {
         setRating(ratings.puzzle);
         const pick = pickPuzzle(PUZZLES, solved, ratings.puzzle.value);
         if (pick) begin(startRun(pick.puzzle), pick.practice);
+      },
+      () => {
+        if (!cancelled) setLoadFailed(true);
       },
     );
     return () => {
@@ -139,34 +146,41 @@ export function PuzzlesScreen() {
 
   const onSolved = useCallback(
     async (solvedRun: PuzzleRun) => {
-      const result = await store(solvedRun, true);
+      setUnsaved(null);
       solvedRef.current.add(solvedRun.puzzle.id);
       const clean = isCleanSolve(solvedRun);
       setMessage({
         tone: 'good',
         text: clean ? t('Solved! Well spotted.') : t('Solved. Try the next one without help.'),
       });
-      if (!result.firstSolve) return;
-      // XP is idempotent per puzzle id in the engine, so a replay can never farm it
-      const startedMs = startedAt.current;
-      const endedMs = Math.max(Date.now(), startedMs + 1000);
-      const recorded = await trainingEngine.recordSession({
-        id: `chess-puzzle:${solvedRun.puzzle.id}`,
-        moduleId: 'chess',
-        activityType: 'chess_puzzle',
-        startedAt: startedMs,
-        endedAt: endedMs,
-        source: 'timer',
-        score: 1,
-        result: {
-          puzzleId: solvedRun.puzzle.id,
-          rating: solvedRun.puzzle.rating,
-          themes: [...solvedRun.puzzle.themes],
-          mistakes: solvedRun.mistakes,
-          hints: solvedRun.hints,
-        },
-      });
-      if (recorded.ok && !recorded.value.duplicate) setOutcome(recorded.value);
+      try {
+        await store(solvedRun, true);
+        // The XP is recorded on every solve, not only the first: the engine keeps one session per
+        // puzzle id (a repeat is a no-op), so a save that failed earlier is made good by retrying
+        // and a replay can never farm XP.
+        const startedMs = startedAt.current;
+        const endedMs = Math.max(Date.now(), startedMs + 1000);
+        const recorded = await trainingEngine.recordSession({
+          id: `chess-puzzle:${solvedRun.puzzle.id}`,
+          moduleId: 'chess',
+          activityType: 'chess_puzzle',
+          startedAt: startedMs,
+          endedAt: endedMs,
+          source: 'timer',
+          score: 1,
+          result: {
+            puzzleId: solvedRun.puzzle.id,
+            rating: solvedRun.puzzle.rating,
+            themes: [...solvedRun.puzzle.themes],
+            mistakes: solvedRun.mistakes,
+            hints: solvedRun.hints,
+          },
+        });
+        if (!recorded.ok) setUnsaved(solvedRun);
+        else if (!recorded.value.duplicate) setOutcome(recorded.value);
+      } catch {
+        setUnsaved(solvedRun);
+      }
     },
     [store, trainingEngine],
   );
@@ -244,7 +258,11 @@ export function PuzzlesScreen() {
 
   return (
     <Screen title={t('Puzzles')} back={{ to: CHESS_BASE, label: t('Chess') }}>
-      {!ready || !run || !chess ? (
+      {loadFailed ? (
+        <p role="alert" className="type-subhead text-danger">
+          {t('Your puzzle progress could not be loaded. Go back and try again.')}
+        </p>
+      ) : !ready || !run || !chess ? (
         <div className="space-y-3" aria-busy="true">
           <Skeleton className="aspect-square w-full rounded-xl" />
         </div>
@@ -301,6 +319,17 @@ export function PuzzlesScreen() {
               </p>
             )}
           </div>
+
+          {unsaved && (
+            <div className="space-y-2">
+              <p role="alert" className="type-subhead text-danger">
+                {t('Your progress could not be saved.')}
+              </p>
+              <Button variant="secondary" fullWidth onClick={() => void onSolved(unsaved)}>
+                {t('Try saving again')}
+              </Button>
+            </div>
+          )}
 
           {finished && (
             <Card>

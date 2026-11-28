@@ -8,9 +8,11 @@ import {
   clearGameDraft,
   loadChessSummary,
   loadGameDraft,
+  loadOpeningProgress,
   loadPuzzleProgress,
   loadRatings,
   recordFinishedGame,
+  recordOpeningRun,
   recordPuzzleOutcome,
   saveGameDraft,
   type FinishedGame,
@@ -80,7 +82,12 @@ describe('puzzle outcomes', () => {
     expect(again.rating).toBeNull();
     expect((await loadRatings(db)).puzzle).toEqual({ value: 980, games: 1 });
     const row = await db.puzzleProgress.get('p1');
-    expect(row).toMatchObject({ solved: 1, attempts: 3, solvedAt: T0 + 1000, lastAttemptAt: T0 + 2000 });
+    expect(row).toMatchObject({
+      solved: 1,
+      attempts: 3,
+      solvedAt: T0 + 1000,
+      lastAttemptAt: T0 + 2000,
+    });
   });
 
   it('hint-assisted first solve counts as a loss for the rating but is still solved', async () => {
@@ -130,8 +137,31 @@ describe('game draft', () => {
     expect(await loadGameDraft(db)).toBeNull();
   });
 
+  it('keeps the coach flag and the review of a coach game in the draft', async () => {
+    const draft = {
+      id: 'c1',
+      startedAt: T0,
+      level: 'hard' as const,
+      color: 'w' as const,
+      moves: ['e2e4', 'e7e5', 'd1h5'],
+      undos: 1,
+      coach: {
+        reviews: [{ ply: 0, san: 'e4', bestSan: 'e4', grade: 'best' as const, lossCp: 0 }],
+      },
+    };
+    await saveGameDraft(db, draft, T0);
+    expect(await loadGameDraft(db)).toEqual(draft);
+    // a plain game has no coach block at all
+    await saveGameDraft(db, { ...draft, coach: undefined }, T0 + 1);
+    expect((await loadGameDraft(db))?.coach).toBeUndefined();
+  });
+
   it('treats a corrupt draft as no draft instead of throwing', async () => {
-    await db.drafts.put({ key: GAME_DRAFT_KEY, value: { id: 'x', moves: ['not-a-move'] }, updatedAt: T0 });
+    await db.drafts.put({
+      key: GAME_DRAFT_KEY,
+      value: { id: 'x', moves: ['not-a-move'] },
+      updatedAt: T0,
+    });
     expect(await loadGameDraft(db)).toBeNull();
   });
 });
@@ -153,7 +183,7 @@ describe('finished games', () => {
     ...over,
   });
 
-  it('stores the record with its details, rates the game and drops the draft atomically', async () => {
+  it('stores the record with its details and rates the game, leaving the draft for the caller', async () => {
     await saveGameDraft(
       db,
       { id: 'g1', startedAt: T0, level: 'medium', color: 'w', moves: ['e2e4'], undos: 0 },
@@ -173,14 +203,38 @@ describe('finished games', () => {
     });
     expect(row?.localDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await db.ratings.get(PLAY_RATING_KEY)).toMatchObject({ value: 1020, games: 1 });
-    expect(await loadGameDraft(db)).toBeNull();
+    // the draft is only dropped once the training session is recorded too (see finishGame)
+    expect(await loadGameDraft(db)).not.toBeNull();
+  });
+
+  it('is idempotent per game id: recording twice rates once and returns the same outcome', async () => {
+    const first = await recordFinishedGame(db, game());
+    const second = await recordFinishedGame(db, game());
+    expect(second).toEqual(first);
+    expect(second.rating).toMatchObject({ value: 1020, delta: 20 });
+    expect(await db.gameRecords.count()).toBe(1);
+    expect(await db.ratings.get(PLAY_RATING_KEY)).toMatchObject({ value: 1020, games: 1 });
   });
 
   it('does not rate games shorter than five of the player’s moves, but still records them', async () => {
     const result = await recordFinishedGame(db, game({ playerMoves: 4, result: 'loss' }));
-    expect(result).toEqual({ rating: null, rated: false });
+    expect(result).toEqual({ rating: null, rated: false, rewarded: false, coached: false });
     expect(await db.gameRecords.count()).toBe(1);
     expect(await db.ratings.get(PLAY_RATING_KEY)).toBeUndefined();
+  });
+
+  it('records a coach game as practice but never rates it or counts it in the record', async () => {
+    const result = await recordFinishedGame(db, game({ id: 'coach', coached: true }));
+    expect(result).toEqual({ rating: null, rated: false, rewarded: true, coached: true });
+    expect(await db.ratings.get(PLAY_RATING_KEY)).toBeUndefined();
+    const row = await db.gameRecords.get('coach');
+    expect(row?.details).toMatchObject({ coached: true });
+    expect(row?.details).not.toHaveProperty('ratingDelta');
+    await recordFinishedGame(db, game({ id: 'real', result: 'loss' }));
+    const summary = await loadChessSummary(db, T0 + 1000);
+    // the coached win is in the history but not in the win/draw/loss record
+    expect(summary.games).toEqual({ wins: 0, draws: 0, losses: 1 });
+    expect(await db.gameRecords.count()).toBe(2);
   });
 
   it('a draw against an equal opponent leaves the rating unchanged; a loss lowers it', async () => {
@@ -225,5 +279,56 @@ describe('summary', () => {
     expect(summary.games).toEqual({ wins: 1, draws: 0, losses: 0 });
     expect(summary.draft?.id).toBe('next');
     expect(summary.ratings.play.games).toBe(1);
+  });
+});
+
+describe('opening progress', () => {
+  it('stores completed runs in puzzleProgress without touching the puzzle statistics', async () => {
+    expect((await loadOpeningProgress(db)).size).toBe(0);
+    await recordOpeningRun(db, 'italian', 3, T0);
+    await recordOpeningRun(db, 'italian', 1, T0 + 1000);
+    await recordOpeningRun(db, 'italian', 2, T0 + 2000);
+    await recordOpeningRun(db, 'najdorf', 0, T0 + 3000);
+
+    const progress = await loadOpeningProgress(db);
+    expect(progress.get('italian')).toEqual({
+      openingId: 'italian',
+      completions: 3,
+      firstCompletedAt: T0,
+      lastCompletedAt: T0 + 2000,
+      bestMistakes: 1,
+      lastMistakes: 2,
+    });
+    expect(progress.get('najdorf')).toMatchObject({ completions: 1, bestMistakes: 0 });
+
+    // the same rows must not leak into the puzzle counters, ratings or streak
+    expect((await loadPuzzleProgress(db)).size).toBe(0);
+    const summary = await loadChessSummary(db, T0 + DAY);
+    expect(summary.puzzlesSolved).toBe(0);
+    expect(summary.puzzleStreakDays).toBe(0);
+    expect(summary.solvedIds.size).toBe(0);
+    expect((await db.ratings.toArray()).length).toBe(0);
+  });
+
+  it('keeps puzzle progress and opening progress apart when both exist', async () => {
+    await recordPuzzleOutcome(db, outcome({ puzzleId: 'p-a' }));
+    await recordOpeningRun(db, 'french', 0, T0);
+    expect([...(await loadPuzzleProgress(db)).keys()]).toEqual(['p-a']);
+    expect([...(await loadOpeningProgress(db)).keys()]).toEqual(['french']);
+  });
+
+  it('reads a row from an older build that lacks the mistake counters', async () => {
+    await db.puzzleProgress.put({
+      puzzleId: 'opening:italian',
+      game: 'chess',
+      solved: 1,
+      attempts: 2,
+      lastAttemptAt: T0,
+      solvedAt: T0,
+    });
+    expect((await loadOpeningProgress(db)).get('italian')).toMatchObject({
+      completions: 2,
+      bestMistakes: 0,
+    });
   });
 });

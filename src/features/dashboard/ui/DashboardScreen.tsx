@@ -18,6 +18,7 @@ import { toLocalDate } from '@/core/time/localDate';
 import { tipForDate } from '@/features/tools/domain/tips';
 import { useNow } from '@/hooks/useNow';
 import { intlLocale, t } from '@/i18n/core';
+import { SkillGrid } from './SkillGrid';
 import { SessionList } from '@/features/training/ui/SessionList';
 import { useOverview, useRecentSessions, useSkills } from '@/features/training/ui/useTraining';
 
@@ -206,59 +207,43 @@ export function DashboardScreen() {
         />
       </Section>
 
-      <Section title={t('Your skills')}>
-        {skills === undefined || overview === undefined ? (
-          <div className="space-y-2 p-4" aria-busy="true">
-            <Skeleton className="h-5 w-1/2" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-        ) : skills.length === 0 ? (
-          <EmptyState
-            icon="star"
-            title={t('No skills yet')}
-            description={t('Add the skills you practise to track time and goals for each.')}
-            action={
-              <Link
-                to="/skills"
-                className="inline-flex min-h-[44px] items-center rounded-xl bg-accent-soft px-4 type-headline text-accent"
-              >
-                {t('Add skills')}
-              </Link>
-            }
-          />
-        ) : (
-          skills.slice(0, 4).map((s) => {
-            const minutes = overview.minutesBySkillThisWeek.get(s.id) ?? 0;
-            return (
-              <Link
-                key={s.id}
-                to={`/skills/${s.id}`}
-                className="block px-4 py-3 active:bg-accent-soft"
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0 break-words type-body">{s.name}</span>
-                  <span className="shrink-0 type-footnote tabular-nums text-muted">
-                    {s.weeklyGoalMinutes
-                      ? t('{done} / {goal} this week', {
-                          done: formatMinutes(minutes),
-                          goal: formatMinutes(s.weeklyGoalMinutes),
-                        })
-                      : t('{done} this week', { done: formatMinutes(minutes) })}
-                  </span>
-                </div>
-                {s.weeklyGoalMinutes ? (
-                  <div className="mt-2">
-                    <ProgressBar
-                      value={minutes / s.weeklyGoalMinutes}
-                      label={t('{name} weekly goal', { name: s.name })}
-                    />
-                  </div>
-                ) : null}
-              </Link>
-            );
-          })
-        )}
-      </Section>
+      {skills !== undefined && overview !== undefined && skills.length > 0 ? (
+        <section className="mt-6" aria-labelledby="home-skills">
+          <h2
+            id="home-skills"
+            className="mb-2 px-4 type-footnote font-medium uppercase tracking-wide text-muted"
+          >
+            {t('Your skills')}
+          </h2>
+          <SkillGrid skills={skills} minutesBySkill={overview.minutesBySkillThisWeek} />
+          <p className="mt-2 px-4 type-footnote text-muted">
+            {t('Tap a skill to start a timer for it.')}
+          </p>
+        </section>
+      ) : (
+        <Section title={t('Your skills')}>
+          {skills === undefined || overview === undefined ? (
+            <div className="space-y-2 p-4" aria-busy="true">
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          ) : (
+            <EmptyState
+              icon="star"
+              title={t('No skills yet')}
+              description={t('Add the skills you practise to track time and goals for each.')}
+              action={
+                <Link
+                  to="/skills"
+                  className="inline-flex min-h-[44px] items-center rounded-xl bg-accent-soft px-4 type-headline text-accent"
+                >
+                  {t('Add skills')}
+                </Link>
+              }
+            />
+          )}
+        </Section>
+      )}
 
       <Section title={t('Recent activity')}>
         {recent === undefined ? (

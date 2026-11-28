@@ -47,7 +47,9 @@ describe('rules helpers', () => {
       winner: 'b',
       reason: 'checkmate',
     });
-    expect(gameEnd(new Chess('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1'))).toMatchObject({ reason: 'stalemate' });
+    expect(gameEnd(new Chess('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1'))).toMatchObject({
+      reason: 'stalemate',
+    });
     expect(gameEnd(new Chess('8/8/8/4k3/8/8/8/4KN2 w - - 0 1'))).toMatchObject({
       reason: 'insufficient material',
     });

@@ -1,6 +1,11 @@
 import { question as q, type Path } from '@/features/learning/domain/learning';
+import { DATA_PATH } from './dataPath';
+import { TESTING_PATH } from './testingPath';
 
-/** Java and Spring Boot lessons: three paths, from the language core to architecture and performance. */
+/**
+ * Java and Spring Boot lessons: five paths, from the language core through Spring Boot, data and
+ * testing to architecture and performance. The data and testing paths live in their own files.
+ */
 export const JAVA_PATHS: readonly Path[] = [
   {
     id: 'java-core',
@@ -600,6 +605,8 @@ record PaymentProperties(Duration timeout) { }`,
       },
     ],
   },
+  DATA_PATH,
+  TESTING_PATH,
   {
     id: 'java-architecture',
     title: 'Architecture and performance',

@@ -1,7 +1,8 @@
 import { centerIndex, otherStone, type BoardSize, type Stone } from '../board';
 import { mulberry32 } from '../rng';
 import { LEVEL_CONFIG, type Level, type LevelConfig } from './levels';
-import { SearchPosition } from './position';
+import type { CaroRule } from '../rules';
+import { MAX_DEFENCES, SearchPosition } from './position';
 
 /**
  * Caro / gomoku engine: iterative-deepening negamax with alpha-beta pruning and a transposition
@@ -11,6 +12,11 @@ import { SearchPosition } from './position';
  *   1. a five is available      -> that is a win; nothing else is searched;
  *   2. the opponent has a four  -> the single blocking cell is the only move (two such cells = lost);
  *   3. otherwise                -> the best few moves by threat value (see SearchPosition.moveValue).
+ * "A five" always means a winning five under the game's rule. Under 'blocked' a five walled in at
+ * both ends is not a win, so it is neither played as one nor defended as one; and a four that
+ * has a free end can also be answered by walling that end in (step 2 then lists those cells too
+ * and lets the search check each). Blocked squares are never candidates and kill every window
+ * that contains them.
  * At the root, medium and hard first look for a forced win by consecutive fours (VCF).
  *
  * What it is not: it is not a solver and has no opening book. It does not see a win that needs a
@@ -45,6 +51,10 @@ export interface AiRequest {
   /** The game so far, in order (cell indexes). The side to move follows from its length. */
   moves: readonly number[];
   level: Level;
+  /** Defaults to 'freestyle'. */
+  rule?: CaroRule;
+  /** Blocked squares (cell indexes), never played and never part of a line. Defaults to none. */
+  obstacles?: readonly number[];
   /** Only used by Easy's occasional mistake. Defaults to a hash of the position (deterministic). */
   seed?: number;
   /** Overrides for the level's budget (tests, tuning). */
@@ -78,6 +88,7 @@ class Searcher {
   private readonly moveBuf: Int32Array[] = [];
   private readonly valueBuf: Int32Array[] = [];
   private readonly winBuf: number[] = [];
+  private readonly defBuf: number[] = [];
   private readonly ttLock = new Int32Array(1 << TT_BITS);
   private readonly ttScore = new Int32Array(1 << TT_BITS);
   private readonly ttMove = new Int16Array(1 << TT_BITS);
@@ -92,7 +103,7 @@ class Searcher {
   ) {
     this.deadline = startedAt + (limits.maxMs ?? config.maxMs);
     this.maxNodes = limits.maxNodes ?? config.maxNodes;
-    const capacity = Math.max(...config.widths) + 2;
+    const capacity = Math.max(Math.max(...config.widths) + 2, MAX_DEFENCES + 2);
     for (let ply = 0; ply <= MAX_PLY; ply++) {
       this.moveBuf.push(new Int32Array(capacity));
       this.valueBuf.push(new Int32Array(capacity));
@@ -156,13 +167,22 @@ class Searcher {
     const pos = this.pos;
     const me = pos.turn;
     if (pos.empties === 0) return 0;
-    if (pos.fourCount(me) > 0) return WIN - ply - 1;
-    let forced = -1;
+    if (pos.hasWin(me)) return WIN - ply - 1;
+    let forcedCount = 0;
     if (pos.fourCount(otherStone(me)) > 0) {
-      if (pos.winCells(otherStone(me), this.winBuf) > 1) return -(WIN - ply - 2);
-      forced = this.winBuf[0]!;
+      const wins = pos.winCells(otherStone(me), this.winBuf);
+      if (wins > 0) {
+        if (pos.rule === 'freestyle') {
+          if (wins > 1) return -(WIN - ply - 2);
+          this.moveBuf[ply]![0] = this.winBuf[0]!;
+          forcedCount = 1;
+        } else {
+          forcedCount = pos.defences(otherStone(me), this.winBuf, this.defBuf);
+          for (let i = 0; i < forcedCount; i++) this.moveBuf[ply]![i] = this.defBuf[i]!;
+        }
+      }
     }
-    if ((depth <= 0 && forced < 0) || ply >= MAX_PLY) return pos.evaluate(me);
+    if ((depth <= 0 && forcedCount === 0) || ply >= MAX_PLY) return pos.evaluate(me);
 
     let alpha = alphaIn;
     let beta = betaIn;
@@ -183,13 +203,10 @@ class Searcher {
       }
     }
 
-    let count: number;
-    if (forced >= 0) {
-      this.moveBuf[ply]![0] = forced;
-      count = 1;
-    } else {
-      count = this.generate(ply, widthAt(this.config.widths, ply), hashMove);
-    }
+    const count =
+      forcedCount > 0
+        ? forcedCount
+        : this.generate(ply, widthAt(this.config.widths, ply), hashMove);
     const list = this.moveBuf[ply]!;
 
     let best = -INF;
@@ -224,13 +241,16 @@ class Searcher {
    */
   findVcf(maxFours: number): number {
     const root = this.pos.turn;
+    const opponent = otherStone(root);
     this.nodes = 0;
     const found = { move: -1 };
+    const blocked = this.pos.rule === 'blocked';
     const attack = (fours: number): boolean => {
       this.nodes++;
       if (this.nodes > VCF_NODE_LIMIT) return false;
+      if ((this.nodes & 63) === 0 && clock() > this.deadline) return false;
       const pos = this.pos;
-      if (fours === 0 || pos.fourCount(otherStone(root)) > 0) return false;
+      if (fours === 0 || pos.hasWin(opponent)) return false;
       const makers: number[] = [];
       pos.fourMakers(root, makers);
       const replies: number[] = [];
@@ -238,12 +258,30 @@ class Searcher {
         pos.make(cell);
         const wins = pos.winCells(root, replies);
         let won = false;
-        if (wins >= 2) {
+        if (blocked && wins > 0) {
+          // Every defence must fail: the completion cells and any end that can be walled in.
+          const defences: number[] = [];
+          pos.defences(root, replies, defences);
+          won = true;
+          for (const defence of defences) {
+            pos.make(defence);
+            let refuted = true; // this defence leaves the five available, or loses to a counter
+            if (!pos.hasWin(root)) {
+              const counter = pos.lastWon || pos.hasWin(opponent);
+              refuted = !counter && attack(fours - 1);
+            }
+            pos.unmake();
+            if (!refuted) {
+              won = false;
+              break;
+            }
+          }
+        } else if (wins >= 2) {
           won = true;
         } else if (wins === 1) {
           const block = replies[0]!;
           pos.make(block);
-          const counter = pos.lastWon || pos.fourCount(otherStone(root)) > 0;
+          const counter = pos.lastWon || pos.hasWin(opponent);
           won = !counter && attack(fours - 1);
           pos.unmake();
         }
@@ -310,9 +348,14 @@ class Searcher {
 export function chooseMove(request: AiRequest): AiResult {
   const startedAt = clock();
   const { size, moves, level } = request;
+  const rule = request.rule ?? 'freestyle';
+  const obstacles = request.obstacles ?? [];
   const config = LEVEL_CONFIG[level];
   const limits = request.limits ?? {};
-  const pos = SearchPosition.fromMoves(size, moves);
+  if (moves.some((move) => obstacles.includes(move))) {
+    throw new RangeError('A move was played on a blocked square');
+  }
+  const pos = SearchPosition.fromMoves(size, moves, rule, obstacles);
   if (pos.empties === 0) throw new RangeError('The board is full');
 
   const finish = (
@@ -329,17 +372,29 @@ export function chooseMove(request: AiRequest): AiResult {
   if (pos.stones === 0) return finish(centerIndex(size), 'opening');
 
   const cells: number[] = [];
-  if (pos.fourCount(me) > 0) {
+  if (pos.hasWin(me)) {
     pos.winCells(me, cells);
     return finish(Math.min(...cells), 'win', WIN);
   }
-  if (pos.fourCount(opp) > 0) {
-    // One cell: block it. Two or more: the game is lost, so make the most useful block.
-    pos.winCells(opp, cells);
-    const block = cells.reduce((best, cell) =>
-      pos.moveValue(cell, me) > pos.moveValue(best, me) ? cell : best,
-    );
-    return finish(block, 'block', cells.length > 1 ? -WIN : 0);
+  if (pos.fourCount(opp) > 0 && pos.winCells(opp, cells) > 0) {
+    const best = (list: readonly number[]) =>
+      list.reduce((top, cell) => (pos.moveValue(cell, me) > pos.moveValue(top, me) ? cell : top));
+    if (rule === 'freestyle') {
+      // One cell: block it. Two or more: the game is lost, so make the most useful block.
+      return finish(best(cells), 'block', cells.length > 1 ? -WIN : 0);
+    }
+    // 'blocked': the cell itself, or walling in the free end of the five. Keep the defences
+    // that really leave the opponent without a winning five.
+    const defences: number[] = [];
+    pos.defences(opp, cells, defences);
+    const safe = defences.filter((cell) => {
+      pos.make(cell);
+      const stillWins = pos.hasWin(opp);
+      pos.unmake();
+      return !stillWins;
+    });
+    if (safe.length > 0) return finish(best(safe), 'block', 0);
+    return finish(best(cells), 'block', -WIN);
   }
 
   const searcher = new Searcher(

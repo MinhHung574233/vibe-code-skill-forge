@@ -1,5 +1,9 @@
 /** Vietnamese strings: caro. Key = the exact English source string. */
 export const caro: Record<string, string> = {
+  Learn: 'Học',
+  'Caro handbook': 'Cẩm nang Caro',
+  'Rules, shapes, winning combinations and exercises':
+    'Luật chơi, các thế cờ, đòn kết hợp thắng và bài tập',
   // Home
   Caro: 'Caro',
   Practice: 'Luyện tập',
@@ -36,6 +40,8 @@ export const caro: Record<string, string> = {
   'Win streak': 'Chuỗi thắng',
   'Best {n}': 'Cao nhất {n}',
   'By level': 'Theo độ khó',
+  'By game type': 'Theo loại ván',
+  Other: 'Khác',
   '{count} played': 'Đã chơi {count} ván',
   '{won} W · {lost} L · {drawn} D': '{won} thắng · {lost} thua · {drawn} hòa',
   'Recent games': 'Các ván gần đây',
@@ -49,6 +55,35 @@ export const caro: Record<string, string> = {
   'Discard this game?': 'Bỏ ván này?',
   'It will be removed and nothing is recorded: no result, no XP.':
     'Ván sẽ bị xóa và không ghi lại gì: không có kết quả, không có XP.',
+
+  // Game types, rules and blocked squares
+  'Game type': 'Kiểu chơi',
+  Classic: 'Cổ điển',
+  'Vietnamese rule': 'Luật Việt Nam',
+  Tournament: 'Thi đấu',
+  '15 × 15. Five or more in a row wins.': '15 × 15. Năm quân trở lên liền nhau là thắng.',
+  '15 × 15. A five blocked at both ends does not win.':
+    '15 × 15. Năm quân liền nhau mà bị chặn cả hai đầu thì không thắng.',
+  '19 × 19, blocked ends, and 3 blocked squares to fight around.':
+    '19 × 19, chặn hai đầu, và 3 ô bị khóa để bạn tranh giành xung quanh.',
+  Advanced: 'Nâng cao',
+  Rule: 'Luật chơi',
+  'Free rule': 'Luật tự do',
+  'Blocked ends': 'Chặn hai đầu',
+  'Five or more in a row win, even with an opponent stone at both ends. Example: ○●●●●●○ wins.':
+    'Năm quân trở lên liền nhau là thắng, kể cả khi có quân đối thủ ở cả hai đầu. Ví dụ: ○●●●●●○ thắng.',
+  'Five or more in a row win, unless an opponent stone or a blocked square sits at both ends. Example: ○●●●●●○ does not win, but ○●●●●● does. The edge of the board does not block.':
+    'Năm quân trở lên liền nhau là thắng, trừ khi cả hai đầu đều bị quân đối thủ hoặc ô bị khóa chặn. Ví dụ: ○●●●●●○ không thắng, nhưng ○●●●●● thì thắng. Mép bàn cờ không tính là chặn.',
+  'Blocked squares': 'Ô bị khóa',
+  'Blocked squares are dark: nobody can play there and no line can pass through them.':
+    'Ô bị khóa có màu tối: không ai đánh được vào đó và không hàng nào đi xuyên qua được.',
+  'Blocked squares are dark: nobody can play there, no line can pass through them, and they count as a block at the end of a line.':
+    'Ô bị khóa có màu tối: không ai đánh được vào đó, không hàng nào đi xuyên qua được, và ô này tính là chặn ở đầu một hàng.',
+  None: 'Không',
+  '{count} squares': '{count} ô',
+  '{rule} · {count} blocked squares': '{rule} · {count} ô bị khóa',
+  'That five is blocked at both ends, so the game goes on.':
+    'Năm quân này bị chặn cả hai đầu nên ván cờ vẫn tiếp tục.',
 
   // Play
   Play: 'Chơi',
@@ -76,7 +111,7 @@ export const caro: Record<string, string> = {
     'Ván có ít hơn {count} nước đi của bạn sẽ không nhận XP.',
   'Try saving again': 'Thử lưu lại',
   'Move list ({count})': 'Danh sách nước đi ({count})',
-  '{n}. {who}: row {row}, column {col}': '{n}. {who}: hàng {row}, cột {col}',
+  '{n}. {who}: {cell}': '{n}. {who}: {cell}',
   'Resign this game?': 'Xin thua ván này?',
   'The game ends and nothing is recorded: no result, no XP.':
     'Ván kết thúc và không ghi lại gì: không có kết quả, không có XP.',
@@ -85,8 +120,9 @@ export const caro: Record<string, string> = {
   empty: 'trống',
   'your stone': 'quân của bạn',
   'computer stone': 'quân của máy',
-  'Row {row}, column {col}, {who}': 'Hàng {row}, cột {col}, {who}',
+  '{cell}, {who}': '{cell}, {who}',
   'Caro board, {size} by {size}': 'Bàn cờ Caro, {size} x {size}',
+  'blocked square': 'ô bị khóa',
   'last move': 'nước vừa đi',
   'winning line': 'hàng thắng',
   selected: 'đã chọn',

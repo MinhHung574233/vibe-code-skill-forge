@@ -4,6 +4,7 @@ import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 import { VI } from './vi';
 import { caro } from './vi/caro';
+import { caroHandbook } from './vi/caroHandbook';
 import { chess } from './vi/chess';
 import { common } from './vi/common';
 import { english } from './vi/english';
@@ -113,7 +114,19 @@ describe('Vietnamese dictionary', () => {
   });
 
   it('has no key translated two different ways in different area files', () => {
-    const areas = { common, shell, training, rubik, english, java, tools, caro, chess, go };
+    const areas = {
+      common,
+      shell,
+      training,
+      rubik,
+      english,
+      java,
+      tools,
+      caro,
+      caroHandbook,
+      chess,
+      go,
+    };
     const seen = new Map<string, { area: string; value: string }>();
     const conflicts: string[] = [];
     for (const [area, dict] of Object.entries(areas)) {

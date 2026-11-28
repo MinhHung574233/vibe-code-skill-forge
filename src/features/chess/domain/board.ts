@@ -96,7 +96,7 @@ export const squareName = (sq: number): string =>
   String.fromCharCode(97 + (sq & 7)) + String((sq >> 4) + 1);
 
 export const squareIndex = (name: string): number =>
-  (name.charCodeAt(0) - 97) + (name.charCodeAt(1) - 49) * 16;
+  name.charCodeAt(0) - 97 + (name.charCodeAt(1) - 49) * 16;
 
 export function moveToUci(m: number): string {
   const promo = movePromotion(m);
@@ -477,8 +477,10 @@ export class Position {
       const rook = b[rookFrom] as number;
       b[rookFrom] = 0;
       b[rookTo] = rook;
-      lo ^= (Z_PIECE_LO[rook * 128 + rookFrom] as number) ^ (Z_PIECE_LO[rook * 128 + rookTo] as number);
-      hi ^= (Z_PIECE_HI[rook * 128 + rookFrom] as number) ^ (Z_PIECE_HI[rook * 128 + rookTo] as number);
+      lo ^=
+        (Z_PIECE_LO[rook * 128 + rookFrom] as number) ^ (Z_PIECE_LO[rook * 128 + rookTo] as number);
+      hi ^=
+        (Z_PIECE_HI[rook * 128 + rookFrom] as number) ^ (Z_PIECE_HI[rook * 128 + rookTo] as number);
     }
     if ((piece & 7) === KING) this.kingSq[us] = to;
 

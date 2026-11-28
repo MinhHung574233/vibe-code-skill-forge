@@ -2,9 +2,11 @@ import { z } from 'zod';
 import { toLocalDate } from '@/core/time/localDate';
 import type { SkillForgeDB } from '@/db/schema';
 import { LEVELS, isLevel } from '../domain/ai/levels';
-import { isBoardSize } from '../domain/board';
+import { MAX_MOVES, isBoardSize } from '../domain/board';
 import { replay } from '../domain/game';
+import { isValidObstacleSet } from '../domain/obstacles';
 import type { CaroDraft, Outcome } from '../domain/play';
+import { isCaroRule } from '../domain/rules';
 import type { FinishedGame } from '../domain/stats';
 
 /**
@@ -13,13 +15,19 @@ import type { FinishedGame } from '../domain/stats';
  */
 export const DRAFT_KEY = 'caro-game';
 
+/**
+ * `rule` and `obstacles` arrived after the first release: a game saved before them has neither
+ * and loads as the classic game (freestyle, no blocked squares).
+ */
 const DraftSchema = z.object({
   id: z.string().min(1),
-  size: z.union([z.literal(15), z.literal(9)]),
+  size: z.union([z.literal(15), z.literal(9), z.literal(19)]),
+  rule: z.enum(['freestyle', 'blocked']).default('freestyle'),
+  obstacles: z.array(z.number().int().min(0)).max(16).default([]),
   level: z.enum(LEVELS),
   humanStone: z.union([z.literal(1), z.literal(2)]),
   startedAt: z.number().int().positive(),
-  moves: z.array(z.number().int().min(0)).max(225),
+  moves: z.array(z.number().int().min(0)).max(MAX_MOVES),
   undos: z.number().int().min(0),
 });
 
@@ -28,8 +36,10 @@ export async function loadDraft(db: SkillForgeDB): Promise<CaroDraft | null> {
   const row = await db.drafts.get(DRAFT_KEY);
   const parsed = DraftSchema.safeParse(row?.value);
   if (!parsed.success) return null;
+  if (!isValidObstacleSet(parsed.data.size, parsed.data.obstacles)) return null;
   try {
-    replay(parsed.data.size, parsed.data.moves); // every move must be legal and in order
+    // every move must be legal and in order, and none may be on a blocked square
+    replay(parsed.data.size, parsed.data.moves, parsed.data);
   } catch {
     return null;
   }
@@ -49,6 +59,10 @@ export interface FinishedGameInput {
   level: string;
   outcome: Outcome;
   size: number;
+  /** 'freestyle' or 'blocked' (blocked ends). */
+  rule: string;
+  /** How many blocked squares the board had. */
+  obstacles: number;
   moves: number;
   /** Who moved first, from the person's point of view. */
   firstMover: 'player' | 'computer';
@@ -66,6 +80,8 @@ export async function saveFinishedGame(db: SkillForgeDB, game: FinishedGameInput
     result: game.outcome,
     details: {
       size: game.size,
+      rule: game.rule,
+      obstacles: game.obstacles,
       moves: game.moves,
       firstMover: game.firstMover,
       undos: game.undos,
@@ -76,9 +92,12 @@ export async function saveFinishedGame(db: SkillForgeDB, game: FinishedGameInput
   });
 }
 
+/** Older records have no `rule` / `obstacles`: they were classic games. */
 const DetailsSchema = z.object({
   size: z.number(),
   moves: z.number().int().min(0),
+  rule: z.string().optional(),
+  obstacles: z.number().int().min(0).optional(),
 });
 
 /** Every stored Caro game, newest first. Rows that do not look like ours are skipped, not fatal. */
@@ -95,6 +114,8 @@ export async function loadFinishedGames(db: SkillForgeDB): Promise<FinishedGame[
       endedAt: row.endedAt,
       size: details.data.size,
       moves: details.data.moves,
+      rule: isCaroRule(details.data.rule) ? details.data.rule : 'freestyle',
+      obstacles: details.data.obstacles ?? 0,
     });
   }
   return games.sort((a, b) => b.endedAt - a.endedAt);

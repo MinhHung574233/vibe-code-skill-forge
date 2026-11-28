@@ -4,6 +4,8 @@ import { canUndo, computerStone, outcomeOf, undoPair, type CaroSetup } from './p
 
 const setup = (over: Partial<CaroSetup> = {}): CaroSetup => ({
   size: 15,
+  rule: 'freestyle',
+  obstacles: [],
   level: 'easy',
   humanStone: 1,
   ...over,

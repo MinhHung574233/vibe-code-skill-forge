@@ -39,6 +39,11 @@ export interface SearchResult {
   depth: number;
   nodes: number;
   timeMs: number;
+  /**
+   * Main line in UCI, read back from the transposition table after the search (first move = `move`).
+   * It can be shorter than the depth reached and is only a guide to what the engine expects.
+   */
+  pv: string[];
 }
 
 export interface RootMoveScore {
@@ -83,6 +88,8 @@ export class Searcher {
   private now: () => number = () => performance.now();
   private iterationBest = 0;
   private iterationScore = 0;
+  /** When set, only these root moves are searched (used to score one specific move). */
+  private rootAllowed: ReadonlySet<number> | null = null;
 
   constructor(ttBits = 18) {
     const size = 1 << ttBits;
@@ -99,13 +106,15 @@ export class Searcher {
 
   /**
    * `history` holds the positions that occurred earlier in the game (oldest first) so a move
-   * that repeats one is scored as the draw it is.
+   * that repeats one is scored as the draw it is. `rootMoves` (UCI) restricts the search to those
+   * moves, so the score of one particular move can be measured like the engine's own choice.
    */
   search(
     fen: string,
     limits: SearchLimits,
     history: readonly string[] = [],
     now: () => number = () => performance.now(),
+    rootMoves?: readonly string[],
   ): SearchResult {
     this.now = now;
     const start = now();
@@ -117,9 +126,10 @@ export class Searcher {
     this.ageHistory();
 
     const pos = this.pos;
-    const roots = this.legalMoves();
+    const legal = this.legalMoves();
+    const roots = rootMoves ? legal.filter((m) => rootMoves.includes(moveToUci(m))) : legal;
     if (roots.length === 0) {
-      const mated = pos.inCheck();
+      const mated = legal.length === 0 && pos.inCheck();
       return {
         move: null,
         score: mated ? -MATE : 0,
@@ -127,8 +137,10 @@ export class Searcher {
         depth: 0,
         nodes: 0,
         timeMs: now() - start,
+        pv: [],
       };
     }
+    this.rootAllowed = rootMoves ? new Set(roots) : null;
 
     let bestMove = roots[0] as number;
     let bestScore = 0;
@@ -149,6 +161,7 @@ export class Searcher {
       if (Math.abs(bestScore) >= MATE - depth) break;
     }
 
+    this.rootAllowed = null;
     return {
       move: moveToUci(bestMove),
       score: bestScore === 0 ? 0 : bestScore, // negation can leave -0
@@ -156,7 +169,33 @@ export class Searcher {
       depth: reached,
       nodes: this.nodes,
       timeMs: now() - start,
+      pv: this.extractPv(bestMove, 10),
     };
+  }
+
+  /**
+   * Follows the transposition-table best moves from the root. Every move is checked against the
+   * generated moves of its position first, so a stale or colliding entry ends the line instead of
+   * corrupting it.
+   */
+  private extractPv(first: number, maxLen: number): string[] {
+    const pos = this.pos;
+    const made: number[] = [];
+    const buffer = new Int32Array(256);
+    let move = first;
+    while (move !== 0 && made.length < maxLen) {
+      const n = pos.generate(buffer, false);
+      let known = false;
+      for (let i = 0; i < n && !known; i++) known = buffer[i] === move;
+      if (!known || !pos.make(move)) break;
+      made.push(move);
+      if (pos.isRepetition()) break;
+      const slot = pos.hashLo & this.ttMask;
+      const meta = this.ttMeta[slot] as number;
+      move = meta !== 0 && this.ttHi[slot] === pos.hashHi ? (this.ttMove[slot] as number) : 0;
+    }
+    for (let i = made.length - 1; i >= 0; i--) pos.unmake(made[i] as number);
+    return made.map(moveToUci);
   }
 
   /** Exact score of every legal root move at a fixed depth (used for the easy level and tests). */
@@ -190,7 +229,8 @@ export class Searcher {
   }
 
   private ageHistory(): void {
-    for (let i = 0; i < this.history.length; i++) this.history[i] = (this.history[i] as number) >> 1;
+    for (let i = 0; i < this.history.length; i++)
+      this.history[i] = (this.history[i] as number) >> 1;
     this.killers.fill(0);
   }
 
@@ -291,6 +331,7 @@ export class Searcher {
         scores[i] = s;
       }
       const move = moves[i] as number;
+      if (isRoot && this.rootAllowed !== null && !this.rootAllowed.has(move)) continue;
       if (!pos.make(move)) continue;
       legal++;
       const quiet = (moveFlags(move) & FLAG_CAPTURE) === 0 && movePromotion(move) === 0;

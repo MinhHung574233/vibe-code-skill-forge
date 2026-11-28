@@ -73,10 +73,13 @@ export type GameEnd =
     };
 
 export function gameEnd(chess: Chess): GameEnd {
-  if (chess.isCheckmate()) return { over: true, winner: chess.turn() === 'w' ? 'b' : 'w', reason: 'checkmate' };
+  if (chess.isCheckmate())
+    return { over: true, winner: chess.turn() === 'w' ? 'b' : 'w', reason: 'checkmate' };
   if (chess.isStalemate()) return { over: true, winner: null, reason: 'stalemate' };
-  if (chess.isInsufficientMaterial()) return { over: true, winner: null, reason: 'insufficient material' };
-  if (chess.isThreefoldRepetition()) return { over: true, winner: null, reason: 'threefold repetition' };
+  if (chess.isInsufficientMaterial())
+    return { over: true, winner: null, reason: 'insufficient material' };
+  if (chess.isThreefoldRepetition())
+    return { over: true, winner: null, reason: 'threefold repetition' };
   if (chess.isDrawByFiftyMoves()) return { over: true, winner: null, reason: 'fifty-move rule' };
   return { over: false };
 }

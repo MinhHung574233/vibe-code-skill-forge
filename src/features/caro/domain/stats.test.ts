@@ -1,13 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import type { Outcome } from './play';
-import { computeStats, type FinishedGame } from './stats';
+import { computeStats, variantOf, type FinishedGame } from './stats';
 
 let n = 0;
 const game = (
   outcome: Outcome,
   endedAt: number,
   level: FinishedGame['level'] = 'medium',
-): FinishedGame => ({ id: `g${n++}`, level, outcome, endedAt, size: 15, moves: 20 });
+): FinishedGame => ({
+  id: `g${n++}`,
+  level,
+  outcome,
+  endedAt,
+  size: 15,
+  rule: 'freestyle',
+  obstacles: 0,
+  moves: 20,
+});
 
 describe('computeStats', () => {
   it('is empty and has no win rate before the first game', () => {
@@ -48,5 +57,40 @@ describe('computeStats', () => {
     ]);
     expect(stats.winStreak).toBe(1);
     expect(stats.bestWinStreak).toBe(3);
+  });
+});
+
+describe('statistics by variant', () => {
+  const variant = (
+    outcome: Outcome,
+    endedAt: number,
+    over: Partial<FinishedGame>,
+  ): FinishedGame => ({ ...game(outcome, endedAt), ...over });
+
+  it('classifies a row by size, rule and blocked squares', () => {
+    expect(variantOf({ size: 15, rule: 'freestyle', obstacles: 0 })).toBe('classic');
+    expect(variantOf({ size: 9, rule: 'freestyle', obstacles: 0 })).toBe('classic');
+    expect(variantOf({ size: 15, rule: 'blocked', obstacles: 0 })).toBe('vietnamese');
+    expect(variantOf({ size: 19, rule: 'blocked', obstacles: 3 })).toBe('tournament');
+    // neither a preset nor a plain game
+    expect(variantOf({ size: 19, rule: 'freestyle', obstacles: 0 })).toBe('other');
+    expect(variantOf({ size: 15, rule: 'freestyle', obstacles: 3 })).toBe('other');
+    expect(variantOf({ size: 19, rule: 'blocked', obstacles: 0 })).toBe('other');
+  });
+
+  it('splits played, won, drawn and lost per variant; old rows (no rule) are Classic', () => {
+    const stats = computeStats([
+      game('win', 1), // an old row: freestyle, no blocked squares
+      variant('loss', 2, { rule: 'blocked' }),
+      variant('draw', 3, { rule: 'blocked' }),
+      variant('win', 4, { size: 19, rule: 'blocked', obstacles: 3 }),
+      variant('loss', 5, { size: 19 }),
+    ]);
+    expect(stats.byVariant.classic).toEqual({ played: 1, won: 1, lost: 0, drawn: 0 });
+    expect(stats.byVariant.vietnamese).toEqual({ played: 2, won: 0, lost: 1, drawn: 1 });
+    expect(stats.byVariant.tournament).toEqual({ played: 1, won: 1, lost: 0, drawn: 0 });
+    expect(stats.byVariant.other).toEqual({ played: 1, won: 0, lost: 1, drawn: 0 });
+    const sum = Object.values(stats.byVariant).reduce((n, t) => n + t.played, 0);
+    expect(sum).toBe(stats.total.played);
   });
 });

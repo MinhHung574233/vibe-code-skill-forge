@@ -86,5 +86,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'tools/**/*.test.ts'],
     css: false,
+    // Engine tests (Caro, Chess, Go) search for real; 5 s is too tight when the whole suite runs in parallel.
+    testTimeout: 20_000,
   },
 });

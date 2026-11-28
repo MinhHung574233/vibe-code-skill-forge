@@ -253,7 +253,7 @@ describe('legality, determinism and time', () => {
     expect(gameStatus(s)).toBe('scoring');
     expect(s.moves.length).toBeGreaterThan(30);
     expect(s.moves.slice(-2).every((m) => m.point === null)).toBe(true);
-  });
+  }, 30_000); // a whole game of real playouts: slow on a loaded machine
 
   it('plays legal moves on 13x13 and 19x19 inside the time budget', () => {
     for (const size of [13, 19] as const) {

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import { HandbookScreen } from '../handbook/HandbookScreen';
 import { CaroHome } from './CaroHome';
 import { CaroPlay } from './CaroPlay';
 import { CARO_HOME } from './labels';
@@ -12,6 +13,7 @@ export function CaroModule() {
     <Routes>
       <Route index element={<CaroHome />} />
       <Route path="play" element={<CaroPlay />} />
+      <Route path="handbook" element={<HandbookScreen />} />
       <Route path="*" element={<Navigate to={CARO_HOME} replace />} />
     </Routes>
   );

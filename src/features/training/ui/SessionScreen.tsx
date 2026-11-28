@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -41,7 +41,8 @@ function useTicker(active: boolean): number {
  */
 export function SessionScreen() {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  const autostartHandled = useRef(false);
   const skills = useSkills();
   const engine = useTrainingEngine();
 
@@ -53,14 +54,38 @@ export function SessionScreen() {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [outcome, setOutcome] = useState<CompletionOutcome | null>(null);
 
+  const start = async (forSkillId: string = skillId) => {
+    const started = Date.now();
+    const next: SessionDraft = {
+      sessionId: newId(started),
+      startedAt: started,
+      ...(forSkillId ? { skillId: forSkillId } : {}),
+    };
+    await saveSessionDraft(getDb(), next, started);
+    setError(null);
+    setDraft(next);
+  };
+
   useEffect(() => {
     let cancelled = false;
     void loadSessionDraft(getDb()).then((d) => {
-      if (!cancelled) setDraft(d);
+      if (cancelled) return;
+      setDraft(d);
+      // Arriving from a Home skill tile (?autostart=1) starts the timer at once. The flag is
+      // removed so a reload or Back does not start a second one, and a running session is never
+      // replaced.
+      if (autostartHandled.current || params.get('autostart') !== '1') return;
+      autostartHandled.current = true;
+      const next = new URLSearchParams(params);
+      next.delete('autostart');
+      setParams(next, { replace: true });
+      const wanted = params.get('skill');
+      if (d === null && wanted) void start(wanted);
     });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, on mount
   }, []);
 
   const running = draft !== null && draft !== undefined;
@@ -68,18 +93,6 @@ export function SessionScreen() {
   const elapsedSec = running ? Math.max(0, Math.floor((now - draft.startedAt) / 1000)) : 0;
   const skillName =
     running && draft.skillId ? skills?.find((s) => s.id === draft.skillId)?.name : undefined;
-
-  const start = async () => {
-    const started = Date.now();
-    const next: SessionDraft = {
-      sessionId: newId(started),
-      startedAt: started,
-      ...(skillId ? { skillId } : {}),
-    };
-    await saveSessionDraft(getDb(), next, started);
-    setError(null);
-    setDraft(next);
-  };
 
   const finish = async () => {
     if (!running) return;

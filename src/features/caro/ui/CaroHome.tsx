@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { Badge, type BadgeTone } from '@/components/Badge';
 import { Button } from '@/components/Button';
@@ -14,12 +14,31 @@ import { newId } from '@/core/ids';
 import { systemClock } from '@/core/time/clock';
 import { getDb } from '@/db/boot';
 import { intlLocale, t } from '@/i18n/core';
+import { cn } from '@/utils/cn';
 import { clearDraft, loadDraft, loadFinishedGames, saveDraft } from '../data/caroRepository';
 import { LEVELS, type Level } from '../domain/ai/levels';
 import type { BoardSize } from '../domain/board';
+import { OBSTACLE_COUNTS, placeObstacles, type ObstacleCount } from '../domain/obstacles';
 import type { CaroDraft, Outcome } from '../domain/play';
-import { computeStats, type Tally } from '../domain/stats';
-import { CARO_PLAY, levelLabel, levelNote, outcomeLabel } from './labels';
+import type { CaroRule } from '../domain/rules';
+import { VARIANT_IDS, computeStats, type Tally } from '../domain/stats';
+import { PRESETS, matchPreset, type PresetId } from '../domain/variant';
+import {
+  CARO_HANDBOOK,
+  CARO_PLAY,
+  isClassicVariant,
+  levelLabel,
+  levelNote,
+  obstacleChoiceLabel,
+  obstacleNote,
+  outcomeLabel,
+  presetLabel,
+  presetNote,
+  ruleLabel,
+  ruleNote,
+  variantIdLabel,
+  variantLabel,
+} from './labels';
 
 const OUTCOME_TONE: Record<Outcome, BadgeTone> = {
   win: 'success',
@@ -35,6 +54,59 @@ const tallyText = (tally: Tally): string =>
 const formatDay = (at: number): string =>
   new Intl.DateTimeFormat(intlLocale(), { month: 'short', day: 'numeric' }).format(at);
 
+/** The three big choices: a radio group of cards (arrow keys move and select, like the other choosers). */
+function PresetPicker({
+  selected,
+  onChange,
+}: {
+  selected: PresetId | null;
+  onChange: (id: PresetId) => void;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const delta =
+      event.key === 'ArrowDown' || event.key === 'ArrowRight'
+        ? 1
+        : event.key === 'ArrowUp' || event.key === 'ArrowLeft'
+          ? -1
+          : 0;
+    if (delta === 0) return;
+    event.preventDefault();
+    const next = PRESETS[(index + delta + PRESETS.length) % PRESETS.length];
+    if (!next) return;
+    onChange(next.id);
+    refs.current[PRESETS.indexOf(next)]?.focus();
+  };
+  return (
+    <div role="radiogroup" aria-label={t('Game type')} className="flex flex-col gap-2">
+      {PRESETS.map((preset, index) => {
+        const checked = preset.id === selected;
+        return (
+          <button
+            key={preset.id}
+            ref={(el) => {
+              refs.current[index] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            tabIndex={checked || (selected === null && index === 0) ? 0 : -1}
+            onClick={() => onChange(preset.id)}
+            onKeyDown={(e) => onKeyDown(e, index)}
+            className={cn(
+              'min-h-[44px] rounded-2xl border-2 px-4 py-3 text-left transition-colors',
+              checked ? 'border-accent bg-accent-soft' : 'border-border bg-surface',
+            )}
+          >
+            <span className="block type-headline">{presetLabel(preset.id)}</span>
+            <span className="mt-0.5 block type-footnote text-muted">{presetNote(preset.id)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Module home: set up a game, resume the one in progress, and see the record so far. */
 export function CaroHome() {
   const navigate = useNavigate();
@@ -44,6 +116,8 @@ export function CaroHome() {
 
   const [level, setLevel] = useState<Level>('medium');
   const [size, setSize] = useState<BoardSize>(15);
+  const [rule, setRule] = useState<CaroRule>('freestyle');
+  const [obstacleCount, setObstacleCount] = useState<ObstacleCount>(0);
   const [first, setFirst] = useState<'player' | 'computer'>('player');
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -56,6 +130,9 @@ export function CaroHome() {
     const next: CaroDraft = {
       id: newId(now),
       size,
+      rule,
+      // Chosen once and stored in the saved game, so a resumed game has the same squares.
+      obstacles: placeObstacles(size, obstacleCount, Math.floor(Math.random() * 0x100000000)),
       level,
       humanStone: first === 'player' ? 1 : 2,
       startedAt: now,
@@ -70,6 +147,15 @@ export function CaroHome() {
     }
     void navigate(CARO_PLAY);
   };
+
+  const choosePreset = (id: PresetId) => {
+    const preset = PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    setSize(preset.size);
+    setRule(preset.rule);
+    setObstacleCount(preset.obstacleCount);
+  };
+  const selectedPreset = matchPreset(size, rule, obstacleCount);
 
   const discard = async () => {
     setDiscardOpen(false);
@@ -90,6 +176,15 @@ export function CaroHome() {
           <p className="mt-1 type-subhead text-muted">
             {levelLabel(draft.level)} · {draft.size}×{draft.size} ·{' '}
             {t('{count} moves', { count: draft.moves.length })}
+          </p>
+          <p className="mt-2">
+            <Badge>
+              {variantLabel({
+                size: draft.size,
+                rule: draft.rule,
+                obstacles: draft.obstacles.length,
+              })}
+            </Badge>
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <Button onClick={() => void navigate(CARO_PLAY)}>{t('Resume')}</Button>
@@ -116,17 +211,57 @@ export function CaroHome() {
             <p className="type-footnote text-muted">{levelNote(level)}</p>
           </div>
           <div className="space-y-2">
-            <p className="type-subhead font-medium text-muted">{t('Board')}</p>
-            <SegmentedControl
-              label={t('Board size')}
-              value={String(size) as '15' | '9'}
-              onChange={(value) => setSize(value === '9' ? 9 : 15)}
-              options={[
-                { value: '15', label: '15 × 15' },
-                { value: '9', label: t('9 × 9 quick') },
-              ]}
-            />
+            <p className="type-subhead font-medium text-muted">{t('Game type')}</p>
+            <PresetPicker selected={selectedPreset} onChange={choosePreset} />
           </div>
+          <details className="rounded-2xl border border-border bg-surface px-4">
+            <summary className="flex min-h-[44px] cursor-pointer items-center type-subhead">
+              {t('Advanced')}
+            </summary>
+            <div className="space-y-4 pb-4">
+              <div className="space-y-2">
+                <p className="type-subhead font-medium text-muted">{t('Board')}</p>
+                <SegmentedControl
+                  label={t('Board size')}
+                  value={String(size) as '9' | '15' | '19'}
+                  onChange={(value) => setSize(value === '9' ? 9 : value === '19' ? 19 : 15)}
+                  options={[
+                    { value: '9', label: t('9 × 9 quick') },
+                    { value: '15', label: '15 × 15' },
+                    { value: '19', label: '19 × 19' },
+                  ]}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="type-subhead font-medium text-muted">{t('Rule')}</p>
+                <SegmentedControl
+                  label={t('Rule')}
+                  value={rule}
+                  onChange={setRule}
+                  options={(['freestyle', 'blocked'] as const).map((value) => ({
+                    value,
+                    label: ruleLabel(value),
+                  }))}
+                />
+                <p className="type-footnote text-muted">{ruleNote(rule)}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="type-subhead font-medium text-muted">{t('Blocked squares')}</p>
+                <SegmentedControl
+                  label={t('Blocked squares')}
+                  value={String(obstacleCount) as '0' | '3'}
+                  onChange={(value) => setObstacleCount(value === '3' ? 3 : 0)}
+                  options={OBSTACLE_COUNTS.map((count) => ({
+                    value: String(count) as '0' | '3',
+                    label: obstacleChoiceLabel(count),
+                  }))}
+                />
+                {obstacleCount > 0 && (
+                  <p className="type-footnote text-muted">{obstacleNote(rule)}</p>
+                )}
+              </div>
+            </div>
+          </details>
           <div className="space-y-2">
             <p className="type-subhead font-medium text-muted">{t('Who moves first')}</p>
             <SegmentedControl
@@ -149,6 +284,16 @@ export function CaroHome() {
           </Button>
         </div>
       </Card>
+
+      <Section title={t('Learn')}>
+        <ListRow
+          title={t('Caro handbook')}
+          subtitle={t('Rules, shapes, winning combinations and exercises')}
+          icon="book"
+          iconColor="var(--accent)"
+          onClick={() => void navigate(CARO_HANDBOOK)}
+        />
+      </Section>
 
       {stats && games && (
         <>
@@ -194,12 +339,42 @@ export function CaroHome() {
                 })}
               </Section>
 
+              <Section title={t('By game type')}>
+                {VARIANT_IDS.filter((id) => stats.byVariant[id].played > 0).map((id) => {
+                  const tally = stats.byVariant[id];
+                  return (
+                    <ListRow
+                      key={id}
+                      title={variantIdLabel(id)}
+                      subtitle={t('{count} played', { count: tally.played })}
+                      accessory={
+                        <span className="type-subhead tabular-nums text-muted">
+                          {tallyText(tally)}
+                        </span>
+                      }
+                    />
+                  );
+                })}
+              </Section>
+
               <Section title={t('Recent games')}>
                 {games.slice(0, RECENT_GAMES).map((game) => (
                   <ListRow
                     key={game.id}
                     title={`${levelLabel(game.level)} · ${game.size}×${game.size}`}
-                    subtitle={`${t('{count} moves', { count: game.moves })} · ${formatDay(game.endedAt)}`}
+                    subtitle={[
+                      t('{count} moves', { count: game.moves }),
+                      ...(isClassicVariant(game)
+                        ? []
+                        : [
+                            variantLabel({
+                              size: game.size,
+                              rule: game.rule,
+                              obstacles: game.obstacles,
+                            }),
+                          ]),
+                      formatDay(game.endedAt),
+                    ].join(' · ')}
                     accessory={
                       <Badge tone={OUTCOME_TONE[game.outcome]}>{outcomeLabel(game.outcome)}</Badge>
                     }

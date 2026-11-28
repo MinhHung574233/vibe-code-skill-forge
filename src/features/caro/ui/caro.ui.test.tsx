@@ -2,13 +2,15 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import Dexie from 'dexie';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bootDatabase, closeActiveDb, getDb } from '@/db/boot';
 import { memoryMarkerStore } from '@/db/testing';
+import { DexieTrainingEngine } from '@/features/training/data/trainingEngine';
 import { loadDraft, saveDraft } from '../data/caroRepository';
 import { cellIndex } from '../domain/board';
 import type { CaroDraft } from '../domain/play';
 import { CaroModule } from './CaroModule';
+import { cellName } from './labels';
 
 const DB = 'caro-ui-test';
 const i = (r: number, c: number) => cellIndex(15, r, c);
@@ -24,6 +26,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   cleanup(); // unmount before closing: live queries must not outlive the database
   closeActiveDb();
   await Dexie.delete(DB);
@@ -42,12 +45,17 @@ function renderModule(path = '/practice/caro') {
   return router;
 }
 
+/** A cell of the 15 x 15 board by its 1-based row from the TOP and column; named as printed (H8). */
 const cell = (row: number, col: number, state = 'empty') =>
-  screen.getByRole('button', { name: new RegExp(`^Row ${row}, column ${col}, ${state}`) });
+  screen.getByRole('button', {
+    name: new RegExp(`^${cellName(15, (row - 1) * 15 + (col - 1))}, ${state}`),
+  });
 
 const draft = (over: Partial<CaroDraft> = {}): CaroDraft => ({
   id: 'ui-game',
   size: 15,
+  rule: 'freestyle',
+  obstacles: [],
   level: 'easy',
   humanStone: 1,
   startedAt: Date.now() - 5 * 60_000,
@@ -66,6 +74,7 @@ describe('module home', () => {
     expect(screen.queryByRole('button', { name: 'Resume' })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('radio', { name: 'Easy' }));
+    await userEvent.click(screen.getByText('Advanced')); // the board size lives under Advanced
     await userEvent.click(screen.getByRole('radio', { name: '9 × 9 quick' }));
     await userEvent.click(screen.getByRole('button', { name: 'Start game' }));
 
@@ -118,6 +127,57 @@ describe('module home', () => {
     expect(screen.getByText('Loss')).toBeInTheDocument();
   });
 
+  it('splits the record by game type; old rows without a rule count as Classic', async () => {
+    const row = (id: string, result: 'win' | 'loss' | 'draw', details: Record<string, unknown>) =>
+      ({
+        id,
+        game: 'caro' as const,
+        level: 'medium',
+        result,
+        startedAt: 1,
+        endedAt: Number(id.slice(1)),
+        localDate: '2026-11-20',
+        details: { moves: 21, ...details },
+      }) as const;
+    await getDb().gameRecords.bulkPut([
+      row('g1', 'win', { size: 15 }), // saved before variants existed
+      row('g2', 'win', { size: 15, rule: 'freestyle', obstacles: 0 }),
+      row('g3', 'loss', { size: 15, rule: 'blocked', obstacles: 0 }),
+      row('g4', 'draw', { size: 19, rule: 'blocked', obstacles: 3 }),
+      row('g5', 'loss', { size: 19, rule: 'freestyle', obstacles: 0 }),
+    ]);
+    renderModule();
+    const section = (await screen.findByRole('heading', { name: 'By game type' })).closest(
+      'section',
+    );
+    if (!section) throw new Error('missing section');
+    expect(section).toHaveTextContent('Classic2 played2 W · 0 L · 0 D');
+    expect(section).toHaveTextContent('Vietnamese rule1 played0 W · 1 L · 0 D');
+    expect(section).toHaveTextContent('Tournament1 played0 W · 0 L · 1 D');
+    expect(section).toHaveTextContent('Other1 played0 W · 1 L · 0 D');
+  });
+
+  it('only lists the game types that were played', async () => {
+    await getDb().gameRecords.put({
+      id: 'only',
+      game: 'caro',
+      level: 'easy',
+      result: 'win',
+      startedAt: 1,
+      endedAt: 2,
+      localDate: '2026-11-20',
+      details: { size: 15, moves: 12 },
+    });
+    renderModule();
+    const section = (await screen.findByRole('heading', { name: 'By game type' })).closest(
+      'section',
+    );
+    if (!section) throw new Error('missing section');
+    expect(section).toHaveTextContent('Classic');
+    expect(section).not.toHaveTextContent('Tournament');
+    expect(section).not.toHaveTextContent('Other');
+  });
+
   it('sends an unknown sub-path back to the module home', async () => {
     renderModule('/practice/caro/nowhere');
     expect(await screen.findByRole('heading', { name: 'New game' })).toBeInTheDocument();
@@ -161,9 +221,7 @@ describe('game screen', () => {
   it('lets the computer open when it moves first', async () => {
     await saveDraft(getDb(), draft({ humanStone: 2 }), Date.now());
     renderModule('/practice/caro/play');
-    expect(
-      await screen.findByRole('button', { name: /^Row 8, column 8, computer stone/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^H8, computer stone/ })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Your move.'));
   });
 
@@ -260,6 +318,49 @@ describe('game screen', () => {
     await userEvent.click(within(saved).getByRole('button', { name: 'Done' }));
     await userEvent.click(screen.getByRole('button', { name: 'New game' }));
     expect(await screen.findByText('100%')).toBeInTheDocument(); // record updated on the home
+  });
+
+  it('names cells the way the board prints them: column letter, row from the bottom', async () => {
+    await saveDraft(getDb(), draft({ moves: [i(7, 7)], humanStone: 2 }), Date.now());
+    renderModule('/practice/caro/play');
+    const grid = await screen.findByRole('grid', { name: 'Caro board, 15 by 15' });
+    // the first stone sits on the centre, H8; the top-left cell is A15, the bottom-right O1
+    expect(within(grid).getByRole('button', { name: /^H8, computer stone/ })).toBeInTheDocument();
+    expect(within(grid).getByRole('button', { name: 'A15, empty' })).toBeInTheDocument();
+    expect(within(grid).getByRole('button', { name: 'O1, empty' })).toBeInTheDocument();
+    expect(within(grid).getByRole('button', { name: 'K11, empty' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Row \d/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText(/^Move list/));
+    expect(screen.getByText('1. Computer: H8')).toBeInTheDocument();
+  });
+
+  it('a failed save keeps the finished board, retries the same recording and pays XP once', async () => {
+    const recordSession = vi
+      .spyOn(DexieTrainingEngine.prototype, 'recordSession')
+      .mockResolvedValueOnce({
+        ok: false,
+        error: { message: 'The session could not be saved.' },
+      } as never);
+    await saveDraft(getDb(), draft({ level: 'hard', moves: ONE_MOVE_FROM_WINNING }), Date.now());
+    renderModule('/practice/caro/play');
+    await screen.findByRole('grid');
+    await userEvent.click(cell(8, 5));
+
+    expect(await screen.findByRole('heading', { name: 'You won' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('The session could not be saved.');
+    expect(cell(8, 5, 'your stone, last move, winning line')).toBeInTheDocument(); // board stays
+    expect(await getDb().xpLedger.count()).toBe(0);
+    expect(await loadDraft(getDb())).not.toBeNull(); // resume would offer the retry again
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try saving again' }));
+    const saved = await screen.findByRole('dialog', { name: 'Session saved' });
+    expect(within(saved).getByText('+15 XP')).toBeInTheDocument();
+    expect(recordSession).toHaveBeenCalledTimes(2);
+    expect(await getDb().gameRecords.count()).toBe(1);
+    expect(await getDb().sessions.count()).toBe(1);
+    expect(await getDb().xpLedger.count()).toBe(1);
+    expect(await loadDraft(getDb())).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Try saving again' })).not.toBeInTheDocument();
   });
 
   it('resuming a game that already ended records it (a crash right after the last move)', async () => {

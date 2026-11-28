@@ -12,7 +12,7 @@ import {
   vocabStats,
 } from './srs';
 import { buildQuiz, shuffle } from './quiz';
-import { WORDS, wordById } from './vocabulary';
+import { TOPIC_LABELS, WORDS, wordById, type WordTopic } from './vocabulary';
 
 function seeded(seed: number): () => number {
   let a = seed;
@@ -25,9 +25,14 @@ function seeded(seed: number): () => number {
 const NOW = 1_800_000_000_000;
 
 describe('vocabulary content', () => {
-  it('has at least 100 words with unique ids and complete fields', () => {
-    expect(WORDS.length).toBeGreaterThanOrEqual(100);
+  it('has at least 300 words with unique ids and complete fields', () => {
+    expect(WORDS.length).toBeGreaterThanOrEqual(300);
     expect(new Set(WORDS.map((w) => w.id)).size).toBe(WORDS.length);
+    expect(new Set(WORDS.map((w) => w.term.toLowerCase())).size).toBe(WORDS.length);
+    // Every topic is well stocked, so quiz distractors can always come from the same topic.
+    for (const topic of Object.keys(TOPIC_LABELS) as WordTopic[]) {
+      expect(WORDS.filter((w) => w.topic === topic).length, topic).toBeGreaterThanOrEqual(40);
+    }
     for (const w of WORDS) {
       expect(w.definition.length, w.id).toBeGreaterThan(10);
       expect(w.example.length, w.id).toBeGreaterThan(10);

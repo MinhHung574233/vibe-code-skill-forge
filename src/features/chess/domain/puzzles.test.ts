@@ -48,7 +48,16 @@ describe('puzzle library', () => {
 
   it('covers the advertised themes', () => {
     const themes = new Set(PUZZLES.flatMap((p) => p.themes));
-    for (const t of ['mate-in-1', 'mate-in-2', 'mate-in-3', 'fork', 'pin', 'skewer', 'back-rank', 'hanging-piece']) {
+    for (const t of [
+      'mate-in-1',
+      'mate-in-2',
+      'mate-in-3',
+      'fork',
+      'pin',
+      'skewer',
+      'back-rank',
+      'hanging-piece',
+    ]) {
       expect(themes.has(t as never), t).toBe(true);
     }
     for (const t of themes) expect(THEME_LABELS[t]).toBeTruthy();

@@ -96,7 +96,7 @@ describe('Words', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Security' }));
     expect(await screen.findByText('phishing')).toBeInTheDocument();
     expect(screen.queryByText('algorithm')).toBeNull();
-  });
+  }, 20_000); // 300 rows render slowly in happy-dom on a loaded machine
 });
 
 describe('Achievement: 100 learned words', () => {

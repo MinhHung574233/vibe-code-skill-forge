@@ -92,7 +92,7 @@ const ROW_SCHEMAS: Record<string, z.ZodType> = {
     penalty: z.enum(['none', 'plus2', 'dnf']),
     scramble: z.string(),
     createdAt: z.number(),
-    localDate: z.string().regex(/^d{4}-d{2}-d{2}$/),
+    localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   }),
   algorithmProgress: z.looseObject({
     algId: z.string().min(1),
@@ -124,7 +124,7 @@ const ROW_SCHEMAS: Record<string, z.ZodType> = {
     result: z.enum(['win', 'loss', 'draw']),
     startedAt: z.number(),
     endedAt: z.number(),
-    localDate: z.string().regex(/^d{4}-d{2}-d{2}$/),
+    localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   }),
   puzzleProgress: z.looseObject({
     puzzleId: z.string().min(1),

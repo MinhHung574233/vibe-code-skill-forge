@@ -49,3 +49,18 @@ export function drawMoves(size: BoardSize): number[] {
   });
   return moves;
 }
+
+/** The cells marked `#` in an ASCII diagram (blocked squares), anchored like `movesFromDiagram`. */
+export function obstaclesFromDiagram(
+  size: BoardSize,
+  rows: readonly string[],
+  origin: readonly [number, number] = [4, 4],
+): number[] {
+  const cells: number[] = [];
+  rows.forEach((line, r) => {
+    [...line].forEach((ch, c) => {
+      if (ch === '#') cells.push(cellIndex(size, origin[0] + r, origin[1] + c));
+    });
+  });
+  return cells;
+}
